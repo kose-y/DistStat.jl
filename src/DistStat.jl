@@ -1,5 +1,7 @@
 module DistStat
 
-greet() = print("Hello World!")
-
+include("distarray.jl")
+include("cuda.jl")
+include("distlinalg.jl")
+include("mapreduce.jl")
 end # module
