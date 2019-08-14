@@ -18,4 +18,4 @@ For CUDA support:
 - CUDA >= 9.0
 - CuArrays.jl, CUDAnative.jl, CUDAdrv.jl, GPUArrays.jl (and their dependencies: defined in `Manifest.toml`)
 - CUDA-aware MPI installation (of OpenMPI, MPICH, and Intel MPI, only OpenMPI supports CUDA)
-- CUDA-aware support for MPI.jl is at https://github.com/kose-y/MPI.jl for now. The changes made in the fork is currently awaiting the maintainer's review at https://github.com/JuliaParallel/MPI.jl/pull/286.)
+- CUDA-aware support for MPI.jl is at https://github.com/kose-y/MPI.jl for now. The changes made in the fork is currently waiting for merge at https://github.com/JuliaParallel/MPI.jl/pull/302.
