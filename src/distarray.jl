@@ -67,6 +67,14 @@ function distribute(nb_elems, parts)
     return [p <= remainder ? local_len+1 : local_len for p in 1:parts]
 end
 
+function local_lengths(x::ContinuousPartitioning{N}) where N
+    vec(map(x) do y
+        prod(map(z -> length(z), y))
+    end)
+end
+
+@inline allsame(x) = all(y -> y == first(x), x)
+
 mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
     sizes::NTuple{N,Int}
     localarray::Union{A,Nothing}
@@ -74,6 +82,9 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
     comm::MPI.Comm
     win::MPI.Win
     myrank::Int
+    local_lengths::Vector{Int}
+    
+    
     function MPIArray{T,N,A}(comm::MPI.Comm, partition_sizes::Vararg{AbstractVector{<:Integer},N}) where {T,N,A}
         nb_procs = MPI.Comm_size(comm)
         rank = MPI.Comm_rank(comm)
@@ -82,7 +93,7 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
         localarray = A{T}(undef,length.(partitioning[rank+1]))
         win = MPI.Win_create(localarray, comm)
         sizes = sum.(partition_sizes)
-        return new{T,N,A}(sizes, localarray, partitioning, comm, win, rank)
+        return new{T,N,A}(sizes, localarray, partitioning, comm, win, rank, local_lengths(partitioning))
     end
     MPIArray{T,N,A}(sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(MPI.COMM_WORLD, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
     MPIArray{T,N,A}(comm::MPI.Comm, partitions::NTuple{N,<:Integer}, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(comm, distribute.(sizes, partitions)...)
@@ -99,7 +110,8 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
         end
 
         win = MPI.Win_create(localarray, comm)
-        result = new{T,N,A}(sum.(partition_sizes), A(localarray), ContinuousPartitioning(partition_sizes...), comm, win, rank)
+        partitioning = ContinuousPartitioning(partition_sizes...)
+        result = new{T,N,A}(sum.(partition_sizes), A(localarray), partitioning, comm, win, rank, local_lengths(partitioning))
         return result
     end
 
