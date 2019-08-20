@@ -10,7 +10,7 @@ end
     Allgather_opt(B)
 Returns a tuple of proper function and argument for Allgather.
 """
-function Allgather_opt(B::MPIArray{T,2,AT}) where {T,AT}
+function Allgather_opt(B::MPIVecOrMat{T,AT}) where {T,AT}
     if allsame(B.local_lengths)
         (Allgather!, B.localarray, B.local_lengths[1])
     else
@@ -18,7 +18,7 @@ function Allgather_opt(B::MPIArray{T,2,AT}) where {T,AT}
     end
 end
 
-function Allgather_opt(B::Transpose{T,MPIArray{T,2,AT}}) where {T,AT}
+function Allgather_opt(B::Transpose{T,ATT} where ATT <: MPIVecOrMat{T,AT}) where {T,AT}
     B_buf = transpose(B).localarray
     tB_local_lengths = transpose(B).local_lengths
     if allsame(tB_local_lengths)
@@ -28,15 +28,15 @@ function Allgather_opt(B::Transpose{T,MPIArray{T,2,AT}}) where {T,AT}
     end
 end
 
-@inline get_local(A::MPIArray{T,2,AT}) where {T,AT} = A.localarray
-@inline get_local(A::Transpose{T,MPIArray{T,2,AT}}) where {T,AT} = transpose(transpose(A).localarray)
+@inline get_local(A::MPIVecOrMat{T,AT}) where {T,AT} = A.localarray
+@inline get_local(A::Transpose{T,ATT} where ATT <: MPIVecOrMat{T,AT}) where {T,AT} = transpose(transpose(A).localarray)
 
 """
 Scenario 1: inner product, result distributed, temporary space required
 A: r x [p], B: [p] x q, C: r x [q]
 tmp: r x q, for local computation
 """
-function LinearAlgebra.mul!(C::MPIArray{T,2,AT}, A::MPIArray{T,2,AT}, B::Transpose{T, MPIArray{T,2,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(A,1), size(B,2))) where {T,AT}
+function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::Transpose{T, MPIMatrix{T,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(A,1), size(B,2))) where {T,AT}
     @assert size(C,1) == size(A,1) && size(C,2) == size(B,2)
     @assert size(A,1) == size(tmp,1) && size(B,2) == size(tmp,2)
     localA = get_local(A)
@@ -49,7 +49,7 @@ function LinearAlgebra.mul!(C::MPIArray{T,2,AT}, A::MPIArray{T,2,AT}, B::Transpo
     end
 end
 
-function LinearAlgebra.mul!(C::Transpose{T,MPIArray{T,2,AT}}, A::MPIArray{T,2,AT},B::Transpose{T,MPIArray{T,2,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(A,1))) where {T,AT}
+function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::MPIMatrix{T,AT},B::Transpose{T,MPIMatrix{T,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(A,1))) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A);tmp=tmp)
 end
 
@@ -58,7 +58,7 @@ Scenario 2: short and fat matrix multiplied by a fat matrix. More communication 
 A: r x [p], B: p x [q], C: r x [q]
 tmp: r x p: A is Allgather!-ed.
 """
-function LinearAlgebra.mul!(C::MPIArray{T,2,AT}, A::MPIArray{T,2,AT}, B::MPIArray{T,2,AT}; tmp::AbstractArray{T,2}=AT{T}(undef, size(A,1), size(A,2))) where {A,AT}
+function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::MPIMatrix{T,AT}; tmp::AbstractArray{T,2}=AT{T}(undef, size(A,1), size(A,2))) where {T,AT}
     @assert size(C,1) == size(A,1) && size(C,2) == size(B,2)
     @assert size(A,1) == size(tmp,1) && size(A, 2) == size(tmp, 2)
     localA = get_local(A)
@@ -73,7 +73,7 @@ function LinearAlgebra.mul!(C::MPIArray{T,2,AT}, A::MPIArray{T,2,AT}, B::MPIArra
     LinearAlgebra.mul!(localC, tmp, localB)
 end
 
-function LinearAlgebra.mul!(C::Transpose{T,MPIArray{T,2,AT}}, A::Transpose{T,MPIArray{T,2,AT}}, B::Transpose{T,MPIArray{T,2,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(B,1))) where {A,AT}
+function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::Transpose{T,MPIMatrix{T,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(B,1))) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A); tmp=tmp)
 end
 
@@ -81,7 +81,7 @@ end
 """
 Scenario 3: inner product, result broadcasted
 """
-function LinearAlgebra.mul!(C::AbstractArray{T,2}, A::MPIArray{T,2,AT}, B::Transpose{T,MPIArray{T,2,AT}}) where {T,AT}
+function LinearAlgebra.mul!(C::AbstractMatrix{T}, A::MPIMatrix{T,AT}, B::Transpose{T,MPIMatrix{T,AT}}) where {T,AT}
     @assert size(C, 1) == size(A, 1) && size(C, 2) == size(B, 2)
     localA = get_local(A)
     localB = get_local(B)
@@ -94,7 +94,7 @@ end
 Scenario 4: outer product, temporary space required
 transpose(A) is Allgather!-ed.
 """
-function LinearAlgebra.mul!(C::MPIArray{T,2,AT}, A::Transpose{T,MPIArray{T,2,AT}}, B::MPIArray{T,2,AT}; tmp::AbstractArray{T,2}=AT{T}(undef,size(A,2),size(A,1))) where {T,AT}
+function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Transpose{T,MPIMatrix{T,AT}}, B::MPIMatrix{T,AT}; tmp::AbstractArray{T,2}=AT{T}(undef,size(A,2),size(A,1))) where {T,AT}
     @assert size(C,1) == size(A,1) && size(C,2) == size(B,2)
     @assert size(A,2) == size(tmp,1) && size(A,1) == size(tmp,2)
     localA = get_local(A)
@@ -109,7 +109,7 @@ function LinearAlgebra.mul!(C::MPIArray{T,2,AT}, A::Transpose{T,MPIArray{T,2,AT}
     LinearAlgebra.mul!(localC, transpose(tmp), localB)
 end
 
-function LinearAlgebra.mul!(C::Transpose{T,MPIArray{T,2,AT}}, A::Transpose{T,MPIArray{T,2,AT}}, B::MPIArray{T,2,AT}; tmp::AbstractArray{T,2}=AT{T}(undef,size(B,1), size(B,2))) where {T,AT}
+function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::MPIMatrix{T,AT}; tmp::AbstractArray{T,2}=AT{T}(undef,size(B,1), size(B,2))) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A);tmp=tmp)
 end
 
@@ -117,17 +117,70 @@ end
 Scenario 5: Small, broadcasted matrix multiplied by a distributed matrix.
 A: s x r, B: r x [q], C: s x [q].
 """
-function LinearAlgebra.mul!(C::MPIArray{T,2,AT}, A::AbstractArray{T,2}, B::MPIArray{T,2,AT}) where {T,AT}
-    @assert size(C,1) == size(A,1) && size(C,2) == size(B,2)
+function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Union{AbstractMatrix{T}}, B::MPIMatrix{T,AT}) where {T,AT}
+    localB = get_local(B)
+    localC = get_local(C)
+    LinearAlgebra.mul!(localC, A, localB)
+end
+function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Transpose{T,ATT} where ATT <: AbstractMatrix{T}, B::MPIMatrix{T,AT}) where {T,AT}
     localB = get_local(B)
     localC = get_local(C)
     LinearAlgebra.mul!(localC, A, localB)
 end
 
-function LinearAlgebra.mul!(C::Transpose{T,MPIArray{T,2,AT}}, A::Transpose{T,MPIArray{T,2,AT}}, B::AbstractArray{T,2}) where {T,AT}
+function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::Transpose{T, ATT} where ATT <: AbstractMatrix{T}) where {T,AT}
+    LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A))
+end
+
+function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::AbstractMatrix{T}) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A))
 end
 
 """
 Scenario 6: distributed matrix x broadcasted vector multiplications
 """
+
+"""
+6.1: A: r x [q], B: q x 1, C: r x 1
+"""
+function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::AbstractVector{T}) where {T,AT}
+    localA = get_local(A)
+    LinearAlgebra.mul!(C, localA, B[A.partitioning[Rank()+1][2]])
+    sync()
+    Allreduce!(C)
+end
+
+"""
+6.2: A: r x [q], B: [q] x 1, C: r x 1
+"""
+function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::MPIVector{T,AT}) where {T,AT}
+    localA = get_local(A)
+    localB = get_local(B)
+    LinearAlgebra.mul!(C, localA, localB)
+    sync()
+    Allreduce!(C)
+end
+
+"""
+6.3: A: [p] x q, B: [q] x 1, C: [p] x 1
+"""
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},B::MPIVector{T,AT};tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
+    localA = get_local(A)
+    localC = get_local(C)
+
+    # Allgather
+    sync()
+    (Allgather_ftn!, sendbuf, count_arg) = Allgather_opt(B)
+    Allgather_ftn!(sendbuf, tmp, count_arg)
+
+    LinearAlgebra.mul!(localC, localA, tmp)
+end
+
+"""
+6.4: A: [p] x r, B: r x 1, C: [p] x 1
+"""
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}}, B::AbstractVector{T}) where {T,AT}
+    localA = get_local(A)
+    localC = get_local(C)
+    LinearAlgebra.mul!(localC, localA, B)
+end

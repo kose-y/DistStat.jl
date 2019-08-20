@@ -118,6 +118,9 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
     MPIArray{T,N,A}(localarray::AbstractArray{T,N}, nb_partitions::Vararg{<:Integer,N}) where {T,N,A} = MPIArray(MPI.COMM_WORLD, A(localarray), nb_partitions...)
 end
 
+MPIVector{T,A} = MPIArray{T,1,A}
+MPIMatrix{T,A} = MPIArray{T,2,A}
+MPIVecOrMat{T,A} = Union{MPIVector{T,A},MPIMatrix{T,A}}
 
 Base.IndexStyle(::Type{MPIArray{T,N,A}}) where {T,N,A} = IndexCartesian()
 
