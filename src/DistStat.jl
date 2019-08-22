@@ -21,5 +21,5 @@ include("distdirectives.jl")
 include("distarray.jl")
 include("cuda.jl")
 include("distlinalg.jl")
-include("mapreduce.jl")
+include("reduce.jl")
 end # module
