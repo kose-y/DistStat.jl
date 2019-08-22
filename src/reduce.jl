@@ -1,6 +1,5 @@
 import Base: sum, prod, maximum, minimum, sum!, prod!, maximum!, minimum!
-import MPI: SUM, PROD, MAX, MIN
-for (fname, _fname, fname!, mpiop) in [(:sum, :_sum, :sum!, :SUM), (:prod, :_prod, :prod!, :PROD), (:maximum,:_maximum, :maximum!, :MAX), (:minimum, :_minimum, :minimum!, :MIN)]
+for (fname, _fname, fname!, mpiop) in [(:sum, :_sum, :sum!, :(MPI.SUM)), (:prod, :_prod, :prod!, :(MPI.PROD)), (:maximum,:_maximum, :maximum!, :(MPI.MAX)), (:minimum, :_minimum, :minimum!, :(MPI.MIN))]
     
     @eval begin
         function ($_fname)(f::Function, a::MPIArray{T,N,A}, ::Colon) where {T,N,A}
