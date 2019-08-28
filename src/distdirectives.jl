@@ -1,4 +1,3 @@
-# TODO: Scatter (Scatterv), Gather (Gatherv), Allgather (Allgatherv)
 """
 These are the simplified version of communication methods, only using MPI.COMM_WORLD.
 """

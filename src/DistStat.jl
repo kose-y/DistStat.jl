@@ -22,4 +22,5 @@ include("distarray.jl")
 include("cuda.jl")
 include("distlinalg.jl")
 include("reduce.jl")
+include("broadcast.jl")
 end # module

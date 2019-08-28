@@ -120,13 +120,12 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
     MPIArray{T,N,A}(localarray::AbstractArray{T,N}, nb_partitions::Vararg{<:Integer,N}) where {T,N,A} = MPIArray(MPI.COMM_WORLD, A(localarray), nb_partitions...)
 end
 
-function MPIArray(comm::MPI.Comm, init::Function, partition_sizes::Vararg{AbstractVector{<:Integer}, N}) where N
+function MPIArray(comm::MPI.Comm, init::Function, partition_sizes::Vararg{AbstractVector{<:Integer}, N}; T=nothing, A=nothing) where N
     nb_procs = MPI.Comm_size(comm)
     rank = MPI.Comm_rank(comm)
     partitioning = ContinuousPartitioning(partition_sizes...)
     
-    localidx = partitioning[rank+1]
-    localarray = construct_localpart(init, localidx)
+    localarray = construct_localpart(init, partitioning;T=T,A=A)
     
     T = eltype(localarray)
     TLA = typeof(localarray)
@@ -138,13 +137,20 @@ function MPIArray(comm::MPI.Comm, init::Function, partition_sizes::Vararg{Abstra
     
 end
 
-MPIArray(init::Function, partition_sizes::Vararg{AbstractVector{<:Integer}, N}) where N = MPIArray(MPI.COMM_WORLD, init, partition_sizes...)
+MPIArray(init::Function, partition_sizes::Vararg{AbstractVector{<:Integer}, N};T=nothing,A=nothing) where N = MPIArray(MPI.COMM_WORLD, init, partition_sizes...;T=T,A=A)
 
-MPIArray(init::Function, partitions::NTuple{N,<:Integer}, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray(init, distribute.(sizes, partitions)...)
+MPIArray(init::Function, partitions::NTuple{N,<:Integer}, sizes::Vararg{<:Integer,N};T=nothing, A=nothing) where N = MPIArray(init, distribute.(sizes, partitions)...; T=T,A=A)
 
-MPIArray(init::Function, sizes::Vararg{<:Integer,N}) where N = MPIArray(init, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
+MPIArray(init::Function, sizes::Vararg{<:Integer,N}; T=nothing, A=nothing) where N = MPIArray(init, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...; T=T, A=A)
 
-function construct_localpart(init, localidx; T=nothing, A=nothing)
+function MPIArray(comm::MPI.Comm, localarray::AbstractArray)
+    #TODO, construct from localarrays 
+end
+
+MPIArray(localarray::AbstractArray) = MPIArray(MPI.COMM_WORLD, localarray)
+
+function construct_localpart(init, partitioning; T=nothing, A=nothing)
+    localidx = partitioning[Rank() + 1]
     localpart = init(localidx)
     if A == nothing
         TLA = typeof(localpart)
@@ -153,22 +159,25 @@ function construct_localpart(init, localidx; T=nothing, A=nothing)
     if T == nothing
         T = eltype(localpart)
     end
-    N = length(localidx)
-    convert(A{T,N}, localpart)
+    convert(A{T}, localpart)
 end
 
 MPIVector{T,A} = MPIArray{T,1,A}
 MPIMatrix{T,A} = MPIArray{T,2,A}
 MPIVecOrMat{T,A} = Union{MPIVector{T,A},MPIMatrix{T,A}}
 
-
-
-
 Base.IndexStyle(::Type{MPIArray{T,N,A}}) where {T,N,A} = IndexCartesian()
 
 Base.size(a::MPIArray) = a.sizes
 
-
+"""
+    split_data(arr; root=0, T=T, A=A)
+Splits the data (an AbstractArray in root) to the processes. 
+"""
+function split_data(arr::AbstractArray; root=0, T=nothing, A=nothing)
+    sz = MPI.bcast(size(arr), root=root, comm=MPI.COMM_WORLD)
+    #TODO
+end
 
 """
     sync(a::MPIArray)
