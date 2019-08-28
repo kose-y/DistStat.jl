@@ -80,7 +80,7 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
     localarray::Union{A,Nothing}
     partitioning::ContinuousPartitioning{N}
     comm::MPI.Comm
-    win::MPI.Win
+    # win::MPI.Win
     myrank::Int
     local_lengths::Vector{Cint}
     
@@ -91,12 +91,13 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
         partitioning = ContinuousPartitioning(partition_sizes...)
 
         localarray = A{T}(undef,length.(partitioning[rank+1]))
-        win = MPI.Win_create(localarray, comm)
+        # win = MPI.Win_create(localarray, comm)
         sizes = sum.(partition_sizes)
-        return new{T,N,A}(sizes, localarray, partitioning, comm, win, rank, local_lengths(partitioning))
+        # return new{T,N,A}(sizes, localarray, partitioning, comm, win, rank, local_lengths(partitioning))
+        return new{T,N,A}(sizes, localarray, partitioning, comm, rank, local_lengths(partitioning))
     end
-    MPIArray{T,N,A}(sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(MPI.COMM_WORLD, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
     MPIArray{T,N,A}(comm::MPI.Comm, partitions::NTuple{N,<:Integer}, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(comm, distribute.(sizes, partitions)...)
+    MPIArray{T,N,A}(sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(MPI.COMM_WORLD, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
 
     function MPIArray{T,N,A}(comm::MPI.Comm, localarray::AbstractArray{T,N}, nb_partitions::Vararg{<:Integer,N}) where {T,N,A}
         nb_procs = MPI.Comm_size(comm)
@@ -109,56 +110,58 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
             return getindex.(partition_size_array[idx...],dim)
         end
 
-        win = MPI.Win_create(localarray, comm)
+        # win = MPI.Win_create(localarray, comm)
         partitioning = ContinuousPartitioning(partition_sizes...)
-        result = new{T,N,A}(sum.(partition_sizes), A(localarray), partitioning, comm, win, rank, local_lengths(partitioning))
+        # result = new{T,N,A}(sum.(partition_sizes), A(localarray), partitioning, comm, win, rank, local_lengths(partitioning))
+        result = new{T,N,A}(sum.(partition_sizes), A(localarray), partitioning, comm, rank, local_lengths(partitioning))
         return result
     end
 
     MPIArray{T,N,A}(localarray::AbstractArray{T,N}, nb_partitions::Vararg{<:Integer,N}) where {T,N,A} = MPIArray(MPI.COMM_WORLD, A(localarray), nb_partitions...)
 end
 
+function MPIArray(comm::MPI.Comm, init::Function, partition_sizes::Vararg{AbstractVector{<:Integer}, N}) where N
+    nb_procs = MPI.Comm_size(comm)
+    rank = MPI.Comm_rank(comm)
+    partitioning = ContinuousPartitioning(partition_sizes...)
+    
+    localidx = partitioning[rank]
+    localarray = construct_localpart(init, localidx)
+    
+    T = eltype(localarray)
+    N = length(partitioning[1])
+    A = typeof(localarray).name
+
+    sizes = sum.(partition_sizes)
+
+    MPIArray{T,N,A}(sizes, localarray, partitioning, comm, rank, local_lengths(partitioning))
+    
+end
+
+function construct_localpart(init, localidx; T=nothing, A=nothing)
+    localpart = init(localidx)
+    if A == nothing
+        A = typeof(localpart).name
+    end
+    if T == nothing
+        T = eltype(A)
+    end
+    N = length(localidx)
+    convert(A{T}, localpart)
+end
+
 MPIVector{T,A} = MPIArray{T,1,A}
 MPIMatrix{T,A} = MPIArray{T,2,A}
 MPIVecOrMat{T,A} = Union{MPIVector{T,A},MPIMatrix{T,A}}
+
+
+
 
 Base.IndexStyle(::Type{MPIArray{T,N,A}}) where {T,N,A} = IndexCartesian()
 
 Base.size(a::MPIArray) = a.sizes
 
 
-#=
-# Individual element access. WARNING: this is slow
-function Base.getindex(a::MPIArray{T,N,A}, I::Vararg{Int, N}) where {T,N,A}
-    (target_rank, locind) = local_index(a.partitioning,I)
-    
-    result = Ref{T}()
-    println(target_rank)
-    println(locind)
-    MPI.Win_lock(MPI.LOCK_SHARED, target_rank, 0, a.win)
-    if target_rank == a.myrank
-        result[] = a.localarray[locind+1]
-    else
-        MPI.Get(result, 1, target_rank, locind, a.win)
-    end
-    MPI.Win_unlock(target_rank, a.win)
-    return result[]
-end
-
-# Individual element setting. WARNING: this is slow
-function Base.setindex!(a::MPIArray{T,N,A}, v, I::Vararg{Int, N}) where {T,N,A}
-    (target_rank, locind) = local_index(a.partitioning,I)
-    
-    MPI.Win_lock(MPI.LOCK_EXCLUSIVE, target_rank, 0, a.win)
-    if target_rank == a.myrank
-        a.localarray[locind+1] = v
-    else
-        result = Ref{T}(v)
-        MPI.Put(result, 1, target_rank, locind, a.win)
-    end
-    MPI.Win_unlock(target_rank, a.win)
-end
-=#
 
 """
     sync(a::MPIArray)
@@ -213,7 +216,7 @@ function copy_into!(dest::MPIArray{T,N,A}, src::MPIArray{T,N,A}) where {T,N,A}
     dest.localarray = src.localarray
     dest.partitioning = src.partitioning
     dest.comm = src.comm
-    dest.win = src.win
+    # dest.win = src.win
     dest.myrank = src.myrank
     return dest
 end
@@ -250,9 +253,9 @@ Get the local index range (expressed in terms of global indices) of the given ra
 Execute the function f on the part of a owned by the current rank. It is assumed f does not modify the local part.
 """
 function forlocalpart(f, a::MPIArray)
-    MPI.Win_lock(MPI.LOCK_SHARED, a.myrank, 0, a.win)
+    # MPI.Win_lock(MPI.LOCK_SHARED, a.myrank, 0, a.win)
     result = f(a.localarray)
-    MPI.Win_unlock(a.myrank, a.win)
+    # MPI.Win_unlock(a.myrank, a.win)
     return result
 end
 
@@ -263,11 +266,11 @@ Execute the function f on the part of a owned by the current rank. The local par
 function forlocalpart!(f, As::Vararg{AbstractArray,N}) where N
     isMPIArray = x -> (typeof(x) <: MPIArray)
     for a in As
-        isMPIArray(a) && MPI.Win_lock(MPI.LOCK_EXCLUSIVE, a.myrank, 0, a.win)
+        isMPIArray(a) # && MPI.Win_lock(MPI.LOCK_EXCLUSIVE, a.myrank, 0, a.win)
     end
     result = f([isMPIArray(a) ? a.localarray : a for a in As]...)
     for a in As
-        isMPIArray(a) && MPI.Win_unlock(a.myrank, a.win)
+        isMPIArray(a) # && MPI.Win_unlock(a.myrank, a.win)
     end
     return result
 end
@@ -283,153 +286,7 @@ function linear_ranges(indexblock)
     return result
 end
 
-
-#=
-"""
-    @blockwise m expr
-
-Run `expr` blockwise. Equivalent to running `expr` if `m` is not an MPIArray.
-"""
-macro blockwise(args...)
-    syms = args[1:end-1]
-    ex = args[end]
-    for x in syms
-        isa(x, Symbol) || error("arguments preceding expr must be a symbol")
-        println(typeof(eval(x)))
-    end
-    mpiarrs = Iterators.filter(x->typeof(eval(:($(esc(x))))) <: MPIArray, syms)
-    mpiarrsexpr = :($(Meta.parse(join([esc(x) for x in mpiarrs], ", "))))
-    println(mpiarrsexpr)
-    runexpr = :(forlocalpart!(($mpiarrsexpr) -> $(esc(ex)), $(mpiarrsexpr)...))
-    println(runexpr)
-    eval(runexpr)
-end
-
-
-
-"""
-   @blockdoteq m expr
-
-dot assignment for MPIArray. Equivalent to `m .= expr` for all other inputs.
-"""
-macro blockdoteq(m, expr)
-    quote
-        if typeof($(esc(m))) <: MPIArray
-            forlocalpart!($(esc(m)) -> $(esc(m)) .= $(esc(expr)), $(esc(m)))
-        else
-            $(esc(m)) .= $(esc(expr))
-        end
-    end
-end
-=#
-
-
-
-
-
-
-#=
-struct Block{T,N}
-    array::MPIArray{T,N}
-    ranges::NTuple{N,UnitRange{Int}}
-    targetrankindices::CartesianIndices{N,NTuple{N,UnitRange{Int}}}
-
-    function Block(a::MPIArray{T,N}, ranges::Vararg{AbstractRange{Int},N}) where {T,N}
-        start_indices =  searchsortedfirst.(a.partitioning.index_ends, first.(ranges))
-        end_indices = searchsortedfirst.(a.partitioning.index_ends, last.(ranges))
-        targetrankindices = CartesianIndices(UnitRange.(start_indices, end_indices))
-
-        return new{T,N}(a, UnitRange.(ranges), targetrankindices)
-    end
-end
-
-Base.getindex(a::MPIArray{T,N}, I::Vararg{UnitRange{Int},N}) where {T,N} = Block(a,I...)
-Base.getindex(a::MPIArray{T,N}, I::Vararg{Colon,N}) where {T,N} = Block(a,axes(a)...)
-
-
-"""
-Allocate a local array with the size to fit the block
-"""
-allocate(b::Block{T,N}) where {T,N} = Array{T}(undef,length.(b.ranges))
-
-function blockloop(a::AbstractArray{T,N}, b::Block{T,N}, locktype::MPI.LockType, localfun, mpifun) where {T,N}
-    for rankindex in b.targetrankindices
-        r = b.array.partitioning.ranks[rankindex] - 1
-        localinds = localindices(b.array,r)
-        globalrange = b.ranges .∩ localinds
-        a_range = map((g,r) -> g .- first(r) .+ 1, globalrange, b.ranges)
-        b_range = map((g,r) -> g .- first(r) .+ 1, globalrange, localinds)
-        MPI.Win_lock(locktype, r, 0, b.array.win)
-        if r == b.array.myrank
-            localfun(a, a_range, b.array.localarray, b_range)
-        else
-            alin = LinearIndices(a)
-            blin = LinearIndices(length.(localinds))
-            for (ai,bi) in zip(CartesianIndices(a_range[2:end]),CartesianIndices(b_range[2:end]))
-                a_linear_range = alin[a_range[1][1],ai]:alin[a_range[1][end],ai]
-                b_begin = blin[b_range[1][1],bi] - 1
-                range_len = length(a_linear_range)
-                @assert b_begin + range_len <= prod(length.(localinds))
-                mpifun(pointer(a,first(a_linear_range)), range_len, r, b_begin, b.array.win)
-            end
-        end
-        MPI.Win_unlock(r, b.array.win)
-    end
-end
-
-"""
-Get the (possibly remotely stored) elements of the block and store them in a
-"""
-function getblock!(a::AbstractArray{T,N}, b::Block{T,N}) where {T,N}
-    localfun = function(local_a, a_range, local_b, b_range)
-        local_a[a_range...] .= local_b[b_range...]
-    end
-    blockloop(a, b, MPI.LOCK_SHARED, localfun, MPI.Get)
-end
-
-"""
-Allocate a matrix to store the data referred to by block and copy all elements from the global array to it
-"""
-function getblock(b::Block{T,N}) where {T,N}
-    a = allocate(b)
-    getblock!(a,b)
-    return a
-end
-
-@inline _no_op(a,b) = b
-_mpi_put_with_op(origin, count, rank, disp, win, op) = throw(ErrorException("Unsupported op $op"))
-_mpi_put_with_op(origin, count, rank, disp, win, op::typeof(_no_op)) = MPI.Put(origin, count, rank, disp, win)
-
-"""
-Set the (possibly remotely stored) elements of the block and store them in a
-"""
-function putblock!(a::AbstractArray{T,N}, b::Block{T,N}, op::Function=_no_op) where {T,N}
-    localfun = function(local_a, a_range, local_b, b_range)
-        local_b[b_range...] .= op.(local_b[b_range...], local_a[a_range...])
-    end
-    mpifun = function(origin, count, target_rank, target_disp, win)
-        _mpi_put_with_op(origin, count, target_rank, target_disp, win, op)
-    end
-    blockloop(a, b, MPI.LOCK_EXCLUSIVE, localfun, mpifun)
-end
-
 function free(a::MPIArray{T,N}) where {T,N}
     sync(a)
-    MPI.free(a.win)
+    # MPI.free(a.win)
 end
-
-using CustomUnitRanges: filename_for_urange
-include(filename_for_urange)
-
-struct GlobalBlock{T,N} <: AbstractArray{T,N}
-    array::Array{T,N}
-    block::Block{T,N}
-end
-
-Base.IndexStyle(::Type{GlobalBlock{T,N}}) where {T,N} = IndexCartesian()
-Base.axes(gb::GlobalBlock) = URange.(first.(gb.block.ranges), last.(gb.block.ranges))
-@inline _convert_idx(rng, I) = I .- first.(rng) .+ 1
-Base.getindex(gb::GlobalBlock{T,N}, I::Vararg{Int, N}) where {T,N} = gb.array[_convert_idx(gb.block.ranges, I)...]
-Base.setindex!(gb::GlobalBlock{T,N}, value, I::Vararg{Int, N}) where {T,N} = (gb.array[_convert_idx(gb.block.ranges, I)...] = value)
-Base.size(gb::GlobalBlock) = last.(gb.block.ranges), first.(gb.block.ranges)
-=#

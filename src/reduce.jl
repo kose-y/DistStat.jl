@@ -4,6 +4,7 @@ for (fname, _fname, fname!, mpiop) in [(:sum, :_sum, :sum!, :(MPI.SUM)), (:prod,
     @eval begin
         function ($_fname)(f::Function, a::MPIArray{T,N,A}, ::Colon) where {T,N,A}
             partial = ($fname)(f, a.localarray)
+            sync()
             MPI.Allreduce(partial, $mpiop, MPI.COMM_WORLD)
         end
 
@@ -19,6 +20,7 @@ for (fname, _fname, fname!, mpiop) in [(:sum, :_sum, :sum!, :(MPI.SUM)), (:prod,
         function ($fname!)(r::AbstractArray{T,N}, arr::MPIArray{T,N,A}) where {T,N,A}
             @assert size(r)[end] == 1
             ($fname!)(r, arr.localarray)
+            sync()
             MPI.Allreduce!(r, $mpiop, MPI.COMM_WORLD)
             r
         end

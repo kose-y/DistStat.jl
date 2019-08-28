@@ -9,8 +9,10 @@ MPIArrayStyle(::Val{N}) where {N} = MPIArrayStyle{Broadcast.DefaultArrayStyle{N}
 BroadcastStyle(::Type{<:MPIArray{<:Any, N, A}}) where {N,A} = MPIArrayStyle(BroadcastStyle(A), Val(N))
 
 function BroadcastStyle(::MPIArrayStyle{AStyle}, ::MPIArrayStyle{BStyle}) where {AStyle, BStyle}
-    MPIArrayStyle(BroadcastStyle(AStyle, BStyle))
+    MPIArrayStyle(BroadcastStyle(AStyle, BStyle))()
 end
+
+BroadcastStyle(::Type{<:SubArray{<:Any, <:Any, <:T}}) where T <: DArray = BroadcastStyle(T)
 
 function Broadcast.broadcasted(::MPIArrayStyle{Style}, f, args...) where Style
     inner = Broadcast.broadcasted(Style(), f, args...)
@@ -27,7 +29,8 @@ const MPIDestArray = MPIArray
 
 
 function Base.similar(bc::Broadcasted{<:MPIArrayStyle{Style}}, ::Type{ElType}) where {Style, ElType}
-    MPIArray()
+    a = MPIArray(map(length, axes(bc)))
+    
     #TODO
 
 end
