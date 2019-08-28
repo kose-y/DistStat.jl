@@ -84,7 +84,7 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
     myrank::Int
     local_lengths::Vector{Cint}
     
-    
+    MPIArray{T,N,A}(sizes, localarray, partitioning, comm, myrank, local_lengths) where {T,N,A} = new{T,N,A}(sizes, localarray, partitioning, comm, myrank, local_lengths)
     function MPIArray{T,N,A}(comm::MPI.Comm, partition_sizes::Vararg{AbstractVector{<:Integer},N}) where {T,N,A}
         nb_procs = MPI.Comm_size(comm)
         rank = MPI.Comm_rank(comm)
@@ -125,12 +125,12 @@ function MPIArray(comm::MPI.Comm, init::Function, partition_sizes::Vararg{Abstra
     rank = MPI.Comm_rank(comm)
     partitioning = ContinuousPartitioning(partition_sizes...)
     
-    localidx = partitioning[rank]
+    localidx = partitioning[rank+1]
     localarray = construct_localpart(init, localidx)
     
     T = eltype(localarray)
-    N = length(partitioning[1])
-    A = typeof(localarray).name
+    TLA = typeof(localarray)
+    A = hasproperty(TLA, :name) ? TLA.name.wrapper : TLA
 
     sizes = sum.(partition_sizes)
 
@@ -138,16 +138,23 @@ function MPIArray(comm::MPI.Comm, init::Function, partition_sizes::Vararg{Abstra
     
 end
 
+MPIArray(init::Function, partition_sizes::Vararg{AbstractVector{<:Integer}, N}) where N = MPIArray(MPI.COMM_WORLD, init, partition_sizes...)
+
+MPIArray(init::Function, partitions::NTuple{N,<:Integer}, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray(init, distribute.(sizes, partitions)...)
+
+MPIArray(init::Function, sizes::Vararg{<:Integer,N}) where N = MPIArray(init, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
+
 function construct_localpart(init, localidx; T=nothing, A=nothing)
     localpart = init(localidx)
     if A == nothing
-        A = typeof(localpart).name
+        TLA = typeof(localpart)
+        A = hasproperty(TLA, :name) ? TLA.name.wrapper : TLA
     end
     if T == nothing
-        T = eltype(A)
+        T = eltype(localpart)
     end
     N = length(localidx)
-    convert(A{T}, localpart)
+    convert(A{T,N}, localpart)
 end
 
 MPIVector{T,A} = MPIArray{T,1,A}
