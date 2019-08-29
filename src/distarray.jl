@@ -2,6 +2,7 @@ export MPIArray, localindices, getblock, getblock!, putblock!, allocate, forloca
 export @blockwise, @blockdoteq
 using MPI
 import LinearAlgebra
+import Base: show, print_array, summary, array_summary
 
 """
 Store the distribution of the array indices over the different partitions.
@@ -169,6 +170,29 @@ MPIVecOrMat{T,A} = Union{MPIVector{T,A},MPIMatrix{T,A}}
 Base.IndexStyle(::Type{MPIArray{T,N,A}}) where {T,N,A} = IndexCartesian()
 
 Base.size(a::MPIArray) = a.sizes
+
+
+"""
+    show(io::IO, x::MPIArray)
+
+String representation of an MPIArray
+"""
+function show(io::IO, m::MIME"text/plain", X::MPIArray)
+    summary(io, X)
+    print(io, "\nlocal part:\n")
+    show(io, m, X.localarray)
+end
+
+function show(io::IO, X::MPIArray)
+    print(io, "local part:\n")
+    show(io, X.localarray)
+end
+
+function summary(io::IO, a::MPIArray)
+    array_summary(io, a, axes(a))
+    print(io, " with local block of ")
+    array_summary(io, a.localarray, axes(a.localarray))
+end
 
 """
     split_data(arr; root=0, T=T, A=A)
