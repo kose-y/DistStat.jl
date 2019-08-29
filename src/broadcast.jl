@@ -96,7 +96,7 @@ end
 bclocal(x::T, idxs) where T = _bclocal(BroadcastStyle(T), x, idxs)
 function _bclocal(::MPIArrayStyle, x, idxs)
     bcidxs = _bcview(axes(x), idxs)
-    @assert all(bcidxs .== x.partitioning[Rank() + 1])
+    @assert all(map( (y, z) -> (y  == z) || length(z) == 1 , bcidxs, x.partitioning[Rank() + 1]))
     x.localarray
     # makelocal(x, bcidxs...) # TODO: makelocal
 end
