@@ -62,7 +62,7 @@ bcdistribute(bc::Broadcasted{Style}) where Style <: MPIArrayStyle  = Broadcasted
 bcdistribute(x::T) where T = _bcdistribute(BroadcastStyle(T), x)
 _bcdistribute(::MPIArrayStyle, x) = x
 _bcdistribute(::Broadcast.AbstractArrayStyle{0}, x) = x
-_bcdistribute(::Broadcast.AbstractArrayStyle, x) = error("not implemented") # distribute(x) TODO: define distribute
+_bcdistribute(::Broadcast.AbstractArrayStyle, x) = x # error("not implemented") # distribute(x) TODO: define distribute
 _bcdistribute(::Broadcast.AbstractArrayStyle, x::AbstractRange) = x
 _bcdistribute(::Any, x) = x
 
@@ -110,6 +110,7 @@ function _bclocal(::Broadcast.Style{Tuple}, x, idxs)
     @assert length(idxs) == 1
     tuple((e for (i,e) in enumerate(x) if i in idxs[1])...)
 end
+_bclocal(::Broadcast.AbstractArrayStyle, x, idxs) = x
 _bclocal(::Any, x, idxs) = error("don't know how to localize $x with $idxs")
 
 @inline bclocal_args(idxs, args::Tuple) = (bclocal(args[1], idxs), bclocal_args(idxs, tail(args))...)
