@@ -10,7 +10,7 @@ Distributed statistical computing
 Dependencies:
 - Julia >= 1.1 (recommended) >=0.7 (required. Version 0.7 and 1.0 throws a lengthy warning with CUDA-related packages)
 - MPI installation (MPI.jl is tested on OpenMPI, MPICH, and Intel MPI)
-- MPI.jl >= 0.10.0(and its dependencies: defined in `Manifest.toml`. MPI.jl now supports CUDA-aware MPI)
+- MPI.jl >= 0.10.0 (and its dependencies: defined in `Manifest.toml`. MPI.jl now supports CUDA-aware MPI)
 - CustomUnitRanges.jl
 - See `Project.toml`
 
