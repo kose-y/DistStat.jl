@@ -23,4 +23,6 @@ include("cuda.jl")
 include("distlinalg.jl")
 include("reduce.jl")
 include("broadcast.jl")
+
+include("arrayfunctions.jl")
 end # module

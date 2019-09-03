@@ -99,6 +99,7 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
     end
     MPIArray{T,N,A}(comm::MPI.Comm, partitions::NTuple{N,<:Integer}, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(comm, distribute.(sizes, partitions)...)
     MPIArray{T,N,A}(sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(MPI.COMM_WORLD, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
+    MPIArray{T,N,A}(::UndefInitializer, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(MPI.COMM_WORLD, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
 
     function MPIArray{T,N,A}(comm::MPI.Comm, localarray::AbstractArray{T,N}, nb_partitions::Vararg{<:Integer,N}) where {T,N,A}
         nb_procs = MPI.Comm_size(comm)
@@ -250,14 +251,14 @@ function Base.filter!(f,a::MPIArray)
     error("filter is only supported on 1D MPIArrays")
 end
 
-function copy_into!(dest::MPIArray{T,N,A}, src::MPIArray{T,N,A}) where {T,N,A}
-    free(dest)
-    dest.sizes = src.sizes
-    dest.localarray = src.localarray
-    dest.partitioning = src.partitioning
-    dest.comm = src.comm
+function copyto!(dest::MPIArray{T,N,A}, src::MPIArray{T,N,A}) where {T,N,A}
+    @assert all(dest.sizes .== src.sizes)
+    @assert dest.partitioning .== src.partitioning
+    @assert dest.comm == src.comm
     # dest.win = src.win
-    dest.myrank = src.myrank
+    @assert dest.myrank == src.myrank
+
+    dest.localarray .= src.localarray
     return dest
 end
 
