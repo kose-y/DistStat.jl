@@ -45,7 +45,8 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::Transpose
     # Ireduce would fit well here... but is not supported on both PyTorch and MPI.jl.
     sync()
     for i = 0:Size()-1
-        Reduce!(tmp[C.partitioning[i+1]...], C.localarray; root=i)
+        # NOTE: an array is set to be contiguous only if the first indices are colon.
+        Reduce!(@view(tmp[:, C.partitioning[i+1][2]]), C.localarray; root=i)
     end
 end
 

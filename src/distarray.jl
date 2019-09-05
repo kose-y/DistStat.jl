@@ -3,7 +3,7 @@ export @blockwise, @blockdoteq
 using MPI
 import LinearAlgebra
 import Base: show, print_array, summary, array_summary
-
+import Adapt: adapt
 """
 Store the distribution of the array indices over the different partitions.
 This class forces a continuous, ordered distribution without overlap
@@ -161,7 +161,7 @@ function construct_localpart(init, partitioning; T=nothing, A=nothing)
     if T == nothing
         T = eltype(localpart)
     end
-    convert(A{T}, localpart)
+    adapt(A{T}, localpart)
 end
 
 MPIVector{T,A} = MPIArray{T,1,A}
