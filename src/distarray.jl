@@ -1,8 +1,7 @@
-export MPIArray, localindices, getblock, getblock!, putblock!, allocate, forlocalpart, forlocalpart!, free, redistribute, redistribute!, sync, GlobalBlock, GhostedBlock, getglobal, globaltolocal, globalids
-export @blockwise, @blockdoteq
+export MPIArray, MPIVector, MPIMatrix, MPIVecOrMat, localindices, getblock, getblock!, putblock!, allocate, forlocalpart, forlocalpart!, free, redistribute, redistribute!, sync, GlobalBlock, GhostedBlock, getglobal, globaltolocal, globalids
 using MPI
 import LinearAlgebra
-import Base: show, print_array, summary, array_summary
+import Base: show, print_array, summary, array_summary, copyto!
 import Adapt: adapt
 """
 Store the distribution of the array indices over the different partitions.
@@ -253,7 +252,7 @@ end
 
 function copyto!(dest::MPIArray{T,N,A}, src::MPIArray{T,N,A}) where {T,N,A}
     @assert all(dest.sizes .== src.sizes)
-    @assert dest.partitioning .== src.partitioning
+    @assert all(dest.partitioning .== src.partitioning)
     @assert dest.comm == src.comm
     # dest.win = src.win
     @assert dest.myrank == src.myrank

@@ -48,6 +48,7 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::Transpose
         # NOTE: an array is set to be contiguous only if the first indices are colon.
         Reduce!(@view(tmp[:, C.partitioning[i+1][2]]), C.localarray; root=i)
     end
+    C
 end
 
 function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::MPIMatrix{T,AT},B::Transpose{T,MPIMatrix{T,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(A,1))) where {T,AT}
@@ -72,6 +73,7 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::MPIMatrix
     Allgather_ftn!(sendbuf, tmp, count_arg)
 
     LinearAlgebra.mul!(localC, tmp, localB)
+    C
 end
 
 function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::Transpose{T,MPIMatrix{T,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(B,1))) where {T,AT}
@@ -89,6 +91,7 @@ function LinearAlgebra.mul!(C::AbstractMatrix{T}, A::MPIMatrix{T,AT}, B::Transpo
     LinearAlgebra.mul!(C, localA, localB)
     sync()
     Allreduce!(C)
+    C
 end
 
 """
@@ -108,6 +111,7 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},
     Allgather_ftn!(sendbuf, tmp, count_arg)
 
     LinearAlgebra.mul!(localC, transpose(tmp), localB)
+    C
 end
 
 function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::MPIMatrix{T,AT}; tmp::AbstractArray{T,2}=AT{T}(undef,size(B,1), size(B,2))) where {T,AT}
@@ -122,11 +126,13 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Union{AbstractMatrix{T}}, B::
     localB = get_local(B)
     localC = get_local(C)
     LinearAlgebra.mul!(localC, A, localB)
+    C
 end
 function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Transpose{T,ATT} where ATT <: AbstractMatrix{T}, B::MPIMatrix{T,AT}) where {T,AT}
     localB = get_local(B)
     localC = get_local(C)
     LinearAlgebra.mul!(localC, A, localB)
+    C
 end
 
 function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::Transpose{T, ATT} where ATT <: AbstractMatrix{T}) where {T,AT}
@@ -149,6 +155,7 @@ function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::Abstrac
     LinearAlgebra.mul!(C, localA, B[A.partitioning[Rank()+1][2]])
     sync()
     Allreduce!(C)
+    C
 end
 
 """
@@ -160,6 +167,7 @@ function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::MPIVect
     LinearAlgebra.mul!(C, localA, localB)
     sync()
     Allreduce!(C)
+    C
 end
 
 """
@@ -175,6 +183,7 @@ function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},
     Allgather_ftn!(sendbuf, tmp, count_arg)
 
     LinearAlgebra.mul!(localC, localA, tmp)
+    C
 end
 
 """
@@ -184,4 +193,5 @@ function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},
     localA = get_local(A)
     localC = get_local(C)
     LinearAlgebra.mul!(localC, localA, B)
+    C
 end
