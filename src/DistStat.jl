@@ -2,12 +2,17 @@ module DistStat
 
 import MPI
 import MPI: COMM_WORLD
-
-const tempcounts = Ref{Vector{Integer}}()
+using Requires
 
 function __init__()
     MPI.Initialized() || MPI.Init()
-    tempcounts.x = zeros(Integer, MPI.Comm_size(MPI.COMM_WORLD))
+    @require CuArrays="865a2d-5b23-5a0f-bc46-62713ec82fae" begin
+        @require CUDAnative="" begin
+            include("cuda.jl")
+            set_device!()
+        end
+    end
+
 end
 
 @inline function Size()
@@ -19,7 +24,6 @@ end
 
 include("distdirectives.jl")
 include("distarray.jl")
-include("cuda.jl")
 include("distlinalg.jl")
 include("reduce.jl")
 include("broadcast.jl")
