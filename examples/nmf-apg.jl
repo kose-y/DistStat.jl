@@ -2,13 +2,13 @@ using DistStat, Random, LinearAlgebra
 
 using CuArrays
 
-mutable struct MultUpdate
+mutable struct APGUpdate
     maxiter::Int
     step::Int
     verbose::Bool
     tol::Real
     lambda::Real
-    function MultUpdate(; maxiter::Int=100, step::Int=10, verbose::Bool=false, tol::Real=1e-10, lambda::Real=2e-38)
+    function APGUpdate(; maxiter::Int=100, step::Int=10, verbose::Bool=false, tol::Real=1e-10, lambda::Real=2e-38)
         maxiter > 0 || throw(ArgumentError("maxiter must be greater than 0."))
         tol > 0 || throw(ArgumentError("tol must be positive."))
         lambda >= 0 || throw(ArgumentError("lambda must be nonnegative."))
@@ -66,32 +66,35 @@ function reset!(v::NMFVariables{T,A}; seed=nothing) where {T,A}
     rand!(v.W; seed=seed, common_init=true)
 end
 
-function update_V!(X::MPIArray, u::MultUpdate, v::NMFVariables)
+function update_V!(X::MPIArray, u::APGUpdate, v::NMFVariables{T,A}) where {T,A}
     WXt = mul!(v.tmp_rm1, v.W, transpose(X); tmp=v.tmp_rm_local) 
     WWt = mul!(v.tmp_rr, v.W, transpose(v.W))
     WWtVt = mul!(v.tmp_rm2, WWt, v.Vt)
-    v.Vt .= v.Vt .* WXt ./ (WWtVt .+ u.lambda)
+    v.tmp_rr .^=2
+    sigma = one(T) / (2 * sqrt(sum(v.tmp_rr)) + u.lambda)
+    v.Vt .= max.(v.Vt .- sigma .* (WWtVt .- WXt), zero(T))
 end
 
-function update_W!(X::MPIArray, u::MultUpdate, v::NMFVariables)
+function update_W!(X::MPIArray, u::APGUpdate, v::NMFVariables{T,A}) where {T,A}
     VtX = mul!(v.tmp_rn1, v.Vt, X; tmp=v.tmp_rm_local)
     VtV = mul!(v.tmp_rr, v.Vt, transpose(v.Vt))
     VtVW = mul!(v.tmp_rn2, VtV, v.W)
-    v.W .= v.W .* VtX ./ (VtVW .+ u.lambda)
+    v.tmp_rr .^= 2
+    tau = one(T) / (2 * sqrt(sum(v.tmp_rr)) + u.lambda)
+    v.W .= max.(v.W .- tau .* (VtVW .- VtX), zero(T))
 end
 
-function nmf_get_objective!(X::MPIArray, u::MultUpdate, v::NMFVariables{T,A}) where {T,A}
+function nmf_get_objective!(X::MPIArray, u::APGUpdate, v::NMFVariables{T,A}) where {T,A}
     if u.verbose
         mul!(v.tmp_mn, transpose(v.Vt), v.W; tmp=v.tmp_rm_local) # TODO: improve: print amount of update, etc. 
-        v.tmp_mn .-= X
-        v.tmp_mn .^=2
+        v.tmp_mn .= (v.tmp_mn .- X).^ 2
         return false, (sum(v.tmp_mn))
     else
         return false, zero(T)
     end
 end
 
-function nmf_mult_one_iter!(X::MPIArray, u::MultUpdate, v::NMFVariables)
+function nmf_mult_one_iter!(X::MPIArray, u::APGUpdate, v::NMFVariables)
     copyto!(v.W_prev, v.W)
     copyto!(v.Vt_prev, v.Vt)
     update_V!(X, u, v)
@@ -113,18 +116,18 @@ function loop(X::MPIArray, u, iterfun, evalfun, args...)
     end
 end
 
-function nmf(X::MPIArray, u::MultUpdate, v::NMFVariables)
+function nmf(X::MPIArray, u::APGUpdate, v::NMFVariables)
     loop(X, u, nmf_mult_one_iter!, nmf_get_objective!, v)
 end
 
 
 m = 10000
 n = 10000
-r = 60
+r = 20
 X = MPIMatrix{Float32, CuArray}(undef, m, n)
 rand!(X; common_init=true, seed=0)
-uquick = MultUpdate(;maxiter=2, step=1, verbose=true)
-u = MultUpdate(;maxiter=10000, step=100, verbose=true)
+uquick = APGUpdate(;maxiter=2, step=1, verbose=true)
+u = APGUpdate(;maxiter=10000, step=100, verbose=true)
 v = NMFVariables(X, r; verbose=true, seed=777)
 nmf(X, uquick, v)
 reset!(v; seed=777)
