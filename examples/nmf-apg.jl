@@ -1,6 +1,5 @@
 using DistStat, Random, LinearAlgebra
 
-using CuArrays
 
 mutable struct APGUpdate
     maxiter::Int
@@ -120,15 +119,39 @@ function nmf(X::MPIArray, u::APGUpdate, v::NMFVariables)
     loop(X, u, nmf_mult_one_iter!, nmf_get_objective!, v)
 end
 
+include("cmdline.jl")
+opts = parse_commandline()
+if DistStat.Rank() == 0
+    println("world size: ", DistStat.Size())
+    println(opts)
+end
 
-m = 10000
-n = 10000
-r = 20
-X = MPIMatrix{Float32, CuArray}(undef, m, n)
-rand!(X; common_init=true, seed=0)
+m = opts["rows"]
+n = opts["cols"]
+r = opts["r"]
+iter = opts["iter"]
+interval = opts["step"]
+T = Float64
+A = Array
+if opts["gpu"]
+    using CuArrays
+    A = CuArray
+end
+if opts["Float32"]
+    T = Float32
+end
+init_opt = opts["init_from_master"]
+seed = opts["seed"]
+
+X = MPIMatrix{T, A}(undef, m, n)
+rand!(X; common_init=init_opt, seed=0)
 uquick = APGUpdate(;maxiter=2, step=1, verbose=true)
-u = APGUpdate(;maxiter=10000, step=100, verbose=true)
-v = NMFVariables(X, r; verbose=true, seed=777)
+u = APGUpdate(;maxiter=iter, step=interval, verbose=true)
+v = NMFVariables(X, r; verbose=true, seed=seed)
 nmf(X, uquick, v)
-reset!(v; seed=777)
-CuArrays.@time nmf(X, u, v)
+reset!(v; seed=seed)
+if DistStat.Rank() == 0
+    @time nmf(X, u, v)
+else
+    nmf(X, u, v)
+end

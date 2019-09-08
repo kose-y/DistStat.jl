@@ -68,7 +68,7 @@ function distribute(nb_elems, parts)
 end
 
 function local_lengths(x::ContinuousPartitioning{N}) where N
-    convert(Vector{Cint}, vec(map(x) do y
+    convert(Vector{Int}, vec(map(x) do y
         prod(map(z -> length(z), y))
     end))
 end
@@ -82,7 +82,7 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
     comm::MPI.Comm
     # win::MPI.Win
     myrank::Int
-    local_lengths::Vector{Cint}
+    local_lengths::Vector{Int}
     
     MPIArray{T,N,A}(sizes, localarray, partitioning, comm, myrank, local_lengths) where {T,N,A} = new{T,N,A}(sizes, localarray, partitioning, comm, myrank, local_lengths)
     function MPIArray{T,N,A}(comm::MPI.Comm, partition_sizes::Vararg{AbstractVector{<:Integer},N}) where {T,N,A}
