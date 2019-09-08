@@ -1,7 +1,5 @@
 using DistStat, Random, LinearAlgebra
 
-using CuArrays
-
 mutable struct MultUpdate
     maxiter::Int
     step::Int
@@ -86,7 +84,9 @@ function nmf_get_objective!(X::MPIArray, u::MultUpdate, v::NMFVariables{T,A}) wh
         v.tmp_mn .= (v.tmp_mn .- X).^ 2
         return false, (sum(v.tmp_mn))
     else
-        return false, zero(T)
+        v.Vt_prev .= abs.(v.Vt_prev .- v.Vt)
+        v.W_prev  .= abs.(v.W_prev  .- v.W)
+        return false, (maximum(v.Vt_prev), maximum(v.W_prev))
     end
 end
 
@@ -103,7 +103,7 @@ function loop(X::MPIArray, u, iterfun, evalfun, args...)
     while !converged && t < u.maxiter
         t += 1
         iterfun(X, u, args...)
-        if u.verbose && t % u.step == 0
+        if t % u.step == 0
             converged, monitor = evalfun(X, u, args...)
             if DistStat.Rank() == 0
                 println(t, ' ', monitor)
@@ -116,15 +116,40 @@ function nmf(X::MPIArray, u::MultUpdate, v::NMFVariables)
     loop(X, u, nmf_mult_one_iter!, nmf_get_objective!, v)
 end
 
+include("cmdline.jl")
+opts = parse_commandline()
+if DistStat.Rank() == 0
+    println("world size: ", DistStat.Size())
+    println(opts)
+end
 
-m = 10000
-n = 10000
-r = 60
-X = MPIMatrix{Float32, CuArray}(undef, m, n)
-rand!(X; common_init=true, seed=0)
-uquick = MultUpdate(;maxiter=2, step=1, verbose=true)
-u = MultUpdate(;maxiter=10000, step=100, verbose=true)
-v = NMFVariables(X, r; verbose=true, seed=777)
+m = opts["rows"]
+n = opts["cols"]
+r = opts["r"]
+iter = opts["iter"]
+interval = opts["step"]
+T = Float64
+A = Array
+if opts["gpu"]
+    using CuArrays
+    A = CuArray
+end
+if opts["Float32"]
+    T = Float32
+end
+init_opt = opts["init_from_master"]
+seed = opts["seed"]
+
+
+X = MPIMatrix{T,A}(undef, m, n)
+rand!(X; common_init=init_opt, seed=0)
+uquick = MultUpdate(;maxiter=2, step=1, verbose=false)
+u = MultUpdate(;maxiter=iter, step=interval, verbose=false)
+v = NMFVariables(X, r; verbose=true, seed=seed)
 nmf(X, uquick, v)
-reset!(v; seed=777)
-CuArrays.@time nmf(X, u, v)
+reset!(v; seed=seed)
+if DistStat.Rank() == 0
+    @time nmf(X, u, v)
+else
+    nmf(X, u, v)
+end

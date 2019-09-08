@@ -89,7 +89,9 @@ function nmf_get_objective!(X::MPIArray, u::APGUpdate, v::NMFVariables{T,A}) whe
         v.tmp_mn .= (v.tmp_mn .- X).^ 2
         return false, (sum(v.tmp_mn))
     else
-        return false, zero(T)
+        v.Vt_prev .= abs.(v.Vt_prev .- v.Vt)
+        v.W_prev  .= abs.(v.W_prev  .- v.W)
+        return false, (maximum(v.Vt_prev), maximum(v.W_prev))
     end
 end
 
@@ -106,7 +108,7 @@ function loop(X::MPIArray, u, iterfun, evalfun, args...)
     while !converged && t < u.maxiter
         t += 1
         iterfun(X, u, args...)
-        if u.verbose && t % u.step == 0
+        if t % u.step == 0
             converged, monitor = evalfun(X, u, args...)
             if DistStat.Rank() == 0
                 println(t, ' ', monitor)
@@ -145,8 +147,8 @@ seed = opts["seed"]
 
 X = MPIMatrix{T, A}(undef, m, n)
 rand!(X; common_init=init_opt, seed=0)
-uquick = APGUpdate(;maxiter=2, step=1, verbose=true)
-u = APGUpdate(;maxiter=iter, step=interval, verbose=true)
+uquick = APGUpdate(;maxiter=2, step=1, verbose=false)
+u = APGUpdate(;maxiter=iter, step=interval, verbose=false)
 v = NMFVariables(X, r; verbose=true, seed=seed)
 nmf(X, uquick, v)
 reset!(v; seed=seed)

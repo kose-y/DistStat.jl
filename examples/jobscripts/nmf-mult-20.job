@@ -1,0 +1,14 @@
+#!/bin/sh
+#$ -cwd
+#$ -N nmf
+#$ -pe mpi 40
+#$ -j y
+date
+module load mpi/openmpi-x86_64
+export ROWS=$1
+export COLS=$2
+export R=$3
+. /shared/julia_setup.sh
+export OMP_NUM_THREADS=18
+echo $ROWS
+mpirun -np 40 julia --project=/shared/julia_pkgs/dev/DistStat/examples /shared/julia_pkgs/dev/DistStat/examples/nmf-mult.jl --rows=$ROWS --cols=$COLS --r=$R --set_zero_subnormals 
