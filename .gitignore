@@ -1,3 +1,6 @@
 .DS_Store
 /dev/
 *.swp
+*.sh
+examples/rslts
+*.mem

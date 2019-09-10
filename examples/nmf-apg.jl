@@ -31,7 +31,7 @@ mutable struct NMFVariables{T, A}
     tmp_rn2::MPIMatrix{T,A}
     tmp_mn::Union{MPIMatrix, Nothing}
     tmp_rm_local::A
-    function NMFVariables(X::MPIMatrix{T,A}, r; verbose=false, seed=nothing) where {T,A}
+    function NMFVariables(X::MPIMatrix{T,A}, r; eval_obj=false, seed=nothing) where {T,A}
         m, n    = size(X)
         Vt      = MPIMatrix{T,A}(undef, r, m)
         Vt_prev = MPIMatrix{T,A}(undef, r, m)
@@ -47,7 +47,7 @@ mutable struct NMFVariables{T, A}
         tmp_rm2 = MPIMatrix{T,A}(undef, r, m)
         tmp_rn1 = MPIMatrix{T,A}(undef, r, n)
         tmp_rn2 = MPIMatrix{T,A}(undef, r, n)
-        if verbose
+        if eval_obj
             tmp_mn = MPIMatrix{T,A}(undef, m, n)
         else
             tmp_mn = nothing
@@ -84,7 +84,7 @@ function update_W!(X::MPIArray, u::APGUpdate, v::NMFVariables{T,A}) where {T,A}
 end
 
 function nmf_get_objective!(X::MPIArray, u::APGUpdate, v::NMFVariables{T,A}) where {T,A}
-    if u.verbose
+    if v.tmp_mn != nothing
         mul!(v.tmp_mn, transpose(v.Vt), v.W; tmp=v.tmp_rm_local) # TODO: improve: print amount of update, etc. 
         v.tmp_mn .= (v.tmp_mn .- X).^ 2
         return false, (sum(v.tmp_mn))
@@ -102,7 +102,7 @@ function nmf_mult_one_iter!(X::MPIArray, u::APGUpdate, v::NMFVariables)
     update_W!(X, u, v)
 end
 
-function loop(X::MPIArray, u, iterfun, evalfun, args...)
+function loop!(X::MPIArray, u, iterfun, evalfun, args...)
     converged = false
     t = 0
     while !converged && t < u.maxiter
@@ -117,9 +117,10 @@ function loop(X::MPIArray, u, iterfun, evalfun, args...)
     end
 end
 
-function nmf(X::MPIArray, u::APGUpdate, v::NMFVariables)
-    loop(X, u, nmf_mult_one_iter!, nmf_get_objective!, v)
+function nmf!(X::MPIArray, u::APGUpdate, v::NMFVariables)
+    loop!(X, u, nmf_mult_one_iter!, nmf_get_objective!, v)
 end
+
 
 include("cmdline.jl")
 opts = parse_commandline()
@@ -144,16 +145,17 @@ if opts["Float32"]
 end
 init_opt = opts["init_from_master"]
 seed = opts["seed"]
+eval_obj = opts["eval_obj"]
 
 X = MPIMatrix{T, A}(undef, m, n)
 rand!(X; common_init=init_opt, seed=0)
-uquick = APGUpdate(;maxiter=2, step=1, verbose=false)
-u = APGUpdate(;maxiter=iter, step=interval, verbose=false)
-v = NMFVariables(X, r; verbose=true, seed=seed)
-nmf(X, uquick, v)
+uquick = APGUpdate(;maxiter=2, step=1, verbose=true)
+u = APGUpdate(;maxiter=iter, step=interval, verbose=true)
+v = NMFVariables(X, r; eval_obj=eval_obj, seed=seed)
+nmf!(X, uquick, v)
 reset!(v; seed=seed)
 if DistStat.Rank() == 0
-    @time nmf(X, u, v)
+    @time nmf!(X, u, v)
 else
-    nmf(X, u, v)
+    nmf!(X, u, v)
 end

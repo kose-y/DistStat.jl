@@ -40,6 +40,9 @@ function parse_commandline()
         "--init_from_master"
             help = "use centralized random initialization (costly)"
             action = :store_true
+        "--eval_obj"
+            help = "evaluate objective function (costly). Maximum difference from the previous iteration is printed otherwise."
+            action = :store_true
     end
 
     return parse_args(s)
