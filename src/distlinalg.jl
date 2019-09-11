@@ -236,6 +236,8 @@ function diag!(d::AbstractVector, M::MPIMatrix{T,A}) where {T,A}
     @assert size(M,1) == size(M,2)
     d[M.partitioning[Rank()+1][2]] .= M.localarray[LinearAlgebra.diagind(M)]
     counts = reshape(map(x->convert(Cint, length(x[2])), M.partitioning), :)
+    sync()
+
     MPI.Allgatherv!(MPI.IN_PLACE, d, counts, MPI.COMM_WORLD)
 end
 

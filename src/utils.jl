@@ -64,6 +64,7 @@ function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A};
         other = (r == Rank()) ? reshape(data.localarray,:) : 
         (r < remainder ? @view(tmp_data[1:n*(local_len+1)]) : 
          @view(tmp_data[1:n*local_len]))
+        sync()
         Bcast!(other; root=r)
         other = reshape(other, p, :)
         
