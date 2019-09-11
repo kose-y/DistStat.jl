@@ -3,11 +3,12 @@ import LinearAlgebra: diagind
     euclidean_distance(out, A, B; tmp_m=nothing, tmp_n=nothing)
 
 Computes all pairwise distances between two sets of data, A(p x n) and B(p x m).
-temp memory: length m, length n
+temp memory: length n, length m
 Output: n x m.
 """
-function euclidean_distance!(out::AT, A::AT, B::AT; tmp_n::Union{AT, Nothing}=nothing, tmp_m::Union{AT, Nothing}=nothing) where AT <: AbstractArray
-    ATN =  hasproperty(AT, :name) ? AT.name.wrapper : AT
+function euclidean_distance!(out::AbstractArray, A::AbstractMatrix, B::AbstractMatrix; tmp_n::Union{AbstractArray, Nothing}=nothing, tmp_m::Union{AbstractArray, Nothing}=nothing)
+    AT = typeof(B) # this choice is intentional due to the method below.
+    ATN =  hasproperty(AT, :name) ? AT.name.wrapper : A
 
     p, n = size(A)
     p2, m = size(B)
@@ -37,31 +38,46 @@ end
 
 Computes all pairwise distances between data in A (p x [n]). Output: n x [n].
 """
-function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A}; tmp_big::Union{A, Nothing}=nothing, tmp_small::Union{A, Nothing}=nothing) where {T,A}
+function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A}; 
+                             tmp_data::Union{A, Nothing}=nothing, tmp_dist::Union{A, Nothing}=nothing, 
+                             tmp_vec1::Union{A,Nothing}=nothing, tmp_vec2::Union{A,Nothing}=nothing) where {T,A}
     p, n = size(data)
     @assert size(out) == (n, n)
 
     local_len = n ÷ Size()
     remainder = n % Size()
+    
+    local_len_p = remainder > 0 ? local_len + 1 : local_len
 
-    if remainder != 0
-        tmp_big = (tmp_big == nothing) ? A{T}(undef, n, local_len+1) : tmp_big
-        @assert size(tmp_big) == (n, local_len + 1)
-    end
-    tmp_small = (tmp_small == nothing) ? A{T}(undef, n, local_len) : tmp_small
-    @assert size(tmp_small) == (n, local_len)
+    tmp_data = (tmp_data == nothing) ? A{T}(undef, n*(local_len_p)) : tmp_data
+    @assert length(tmp_data) >= n * local_len_p
+
+    tmp_dist = (tmp_dist == nothing) ? A{T}(undef, local_len_p^2) : tmp_dist
+    @assert length(tmp_dist) >= local_len_p^2
+
+    tmp_vec1 = (tmp_vec1 == nothing) ? A{T}(undef, local_len_p) : tmp_vec1
+    @assert length(tmp_vec1) >= local_len_p
+
+    tmp_vec2 = (tmp_vec2 == nothing) ? A{T}(undef, local_len_p) : tmp_vec2
+    @assert length(tmp_vec2) >= local_len_p
+
 
     for r in 0:Size()-1
         this = data.localarray
-        other = (r == Rank()) ? data.localarray : 
-                        (r < remainder ? tmp_big : tmp_small)
+
+        other = (r == Rank()) ? reshape(data.localarray,:) : 
+        (r < remainder ? @view(tmp_data[1:n*(local_len+1)]) : 
+         @view(tmp_data[1:n*local_len]))
         Bcast!(other; root=r)
+        other = reshape(other, p, :)
         
         #println(out.partitioning[r+1])
-        tmpout = A{T}(undef, length(out.partitioning[r+1][2]), size(out.localarray,2))
-
-        euclidean_distance!(tmpout, other, this) 
-        out.localarray[out.partitioning[r+1][2], :] .= tmpout# expected to be slow in GPU
+        tmp_dist_cols = (Rank() < remainder) ? local_len + 1 : local_len
+        tmp_dist_rows = (r < remainder) ? local_len + 1 : local_len
+        tmp_dist_view = reshape(@view(tmp_dist[1:(tmp_dist_rows * tmp_dist_cols)]), 
+                                      tmp_dist_rows, tmp_dist_cols)
+        euclidean_distance!(tmp_dist_view, other, this; tmp_n = @view(tmp_vec1[1:tmp_dist_rows]), tmp_m=@view(tmp_vec2[1:tmp_dist_cols]))
+        out.localarray[out.partitioning[r+1][2], :] .= tmp_dist_view
     end
-    out
+    out 
 end
