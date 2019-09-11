@@ -30,7 +30,7 @@ end
 
 Computes all pairwise distances between data in A (p x [n]). Output: n x [n].
 """
-function euclidean_distance!(out::MPIMatrix{T,N,A}, data::MPIMatrix{T,N,A}, verbose=False; tmp_big::Union{A, Nothing}=nothing, tmp_small::Union{A, Nothing}) where {T,N,A}
+function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A}; tmp_big::Union{A, Nothing}=nothing, tmp_small::Union{A, Nothing}) where {T,A}
     p, n = size(A)
     @assert size(out) == (n, n)
 
