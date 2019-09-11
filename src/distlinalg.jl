@@ -1,5 +1,6 @@
 import LinearAlgebra: Transpose
 import LinearAlgebra
+export fill_diag!
 
 # temporary function. will actually add CUDA barrier function.
 function sync()
@@ -194,4 +195,34 @@ function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},
     localC = get_local(C)
     LinearAlgebra.mul!(localC, localA, B)
     C
+end
+
+
+
+"""
+    LinearAlgebra.diagind(M::MPIMatrix, k)
+
+returns indices of the diagonal with respect to M.localarray. 
+"""
+@inline function LinearAlgebra.diagind(M::MPIMatrix, k::Integer=0)
+    offset = - (M.partitioning[Rank()+1][2][1]-1) + k
+    return LinearAlgebra.diagind(size(M,1), size(M.localarray,2), offset)
+end
+
+"""
+    LinearAlgebra.diag(M::MPIMatrix{T,A}, k; dist::Bool=false) where {T,A}
+
+returns the diagonal of M. If dist is false, the result is a broadcasted A{T,1}. otherwise, the result is distributed 1 x n "row vector". Distributed return is only valid for a square matrix (due to current way of distribution). 
+"""
+function LinearAlgebra.diag(M::MPIMatrix{T,A}, k::Integer=0; dist::Bool=false) where {T,A}
+    # TODO
+end
+
+"""
+    fill_diag!(M, x, k=0)
+
+fills the diagonal of M with x.
+"""
+@inline function fill_diag!(M::MPIMatrix, x, k::Integer=0)
+    M.localarray[LinearAlgebra.diagind(M, k)] .= x
 end
