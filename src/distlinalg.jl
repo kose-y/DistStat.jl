@@ -219,6 +219,27 @@ function LinearAlgebra.diag(M::MPIMatrix{T,A}, k::Integer=0; dist::Bool=false) w
 end
 
 """
+    diag!(d::MPIMatrix{T,A}, M::MPIMatrix{T,A})
+"""
+function diag!(d::MPIMatrix{T,A}, M::MPIMatrix{T,A}) where {T,A}
+    @assert size(d,1) == 1
+    @assert size(d,2) == size(M, 2)
+    @assert size(M,1) == size(M,2)
+    d.localarray .= reshape(M.localarray[LinearAlgebra.diagind(M)], 1, :)
+end
+
+"""
+    diag!(d::AbstractVector, M::MPIMatrix{T,A})
+"""
+function diag!(d::AbstractVector, M::MPIMatrix{T,A}) where {T,A}
+    @assert size(d,1) == size(M, 1)
+    @assert size(M,1) == size(M,2)
+    d[M.partitioning[Rank()+1][2]] .= M.localarray[LinearAlgebra.diagind(M)]
+    counts = reshape(map(x->convert(Cint, length(x[2])), M.partitioning), :)
+    MPI.Allgatherv!(MPI.IN_PLACE, d, counts, MPI.COMM_WORLD)
+end
+
+"""
     fill_diag!(M, x, k=0)
 
 fills the diagonal of M with x.
