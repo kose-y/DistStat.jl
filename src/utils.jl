@@ -49,7 +49,9 @@ function euclidean_distance!(out::MPIMatrix{T,N,A}, data::MPIMatrix{T,N,A}, verb
         other = (r == Rank()) ? data.localarray : 
                         (r < remainder ? tmp_big : tmp_small)
         Bcast!(other; root=i)
-        euclidean_distance!(@view out.localarray[out.partitioning[r][2], :], other, this)
+        
+        println(out.partitioning[r+1])
+        #euclidean_distance!(out.localarray[out.partitioning[r][2]..., :], other, this)
     end
     out
 end
