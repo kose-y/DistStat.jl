@@ -27,6 +27,8 @@ include("distarray.jl")
 include("distlinalg.jl")
 include("reduce.jl")
 include("broadcast.jl")
-
 include("arrayfunctions.jl")
+
+include("utils.jl")
+
 end # module

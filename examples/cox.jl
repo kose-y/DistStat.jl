@@ -1,24 +1,22 @@
 using DistStat, Random, LinearAlgebra
 
 
-mutable struct MDSUpdate
+mutable struct COXUpdate
     maxiter::Int
     step::Int
     verbose::Bool
     tol::Real
-    function MDSUpdate(; maxiter::Int=100, step::Int=10, verbose::Bool=false, tol::Real=1e-10)
+    function COXUpdate(; maxiter::Int=100, step::Int=10, verbose::Bool=false, tol::Real=1e-10)
         maxiter > 0 || throw(ArgumentError("maxiter must be greater than 0."))
         tol > 0 || throw(ArgumentError("tol must be positive."))
         new(maxiter, step, verbose, tol)
     end
 end
 
-mutable struct MDSVariables{T, A}
-    # MDS variables corresponding to distance matrix of  n x [n], X is external. m: original dimension, n: number of subjects
-    # m::Int # rows, original dimension
-    n::Int # cols, number of subjects
-    r::Int # dimension of new space
-    X::MPIMatrix{T,A} # n x [n], weighted distance
+mutable struct COXVariables{T, A}
+    # COX variables corresponding to distance matrix of  m x [n], X is external. m: number of subjects, n: number of predictors
+    m::Int # rows, number of subjects
+    n::Int # cols, number of predictors
     θ::MPIMatrix{T,A} # r x [n]
     θ_prev::MPIMatrix{T,A} # r x [n]
     W::Union{T,MPIMatrix{T,A}} # weights, a singleton or an n x [n] MPIMatrix (a singleton is used for large-scale experiments)
