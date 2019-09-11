@@ -26,6 +26,7 @@ include("distdirectives.jl")
 include("distarray.jl")
 include("distlinalg.jl")
 include("reduce.jl")
+include("accumulate.jl")
 include("broadcast.jl")
 include("arrayfunctions.jl")
 
