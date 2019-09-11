@@ -117,7 +117,7 @@ function nmf!(X::MPIArray, u::MultUpdate, v::NMFVariables)
 end
 
 include("cmdline.jl")
-opts = parse_commandline()
+opts = parse_commandline_nmf()
 if DistStat.Rank() == 0
     println("world size: ", DistStat.Size())
     println(opts)

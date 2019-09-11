@@ -23,10 +23,6 @@ function parse_commandline()
             help = "interval of checking monitored values"
             arg_type = Int
             default = 100
-        "--r"
-            help = "intermediate size"
-            arg_type = Int
-            default = 20
         "--seed"
             help = "seed"
             arg_type = Int
@@ -45,5 +41,20 @@ function parse_commandline()
             action = :store_true
     end
 
+    return s
+end
+
+function parse_commandline_nmf()
+    s = parse_commandline()
+    @add_arg_table s begin
+        "--r"
+            help = "intermediate size"
+            arg_type = Int
+            default = 20
+        end
     return parse_args(s)
+end
+
+function parse_commandline_mds()
+    parse_commandline_nmf()
 end

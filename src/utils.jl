@@ -43,7 +43,6 @@ function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A};
                              tmp_vec1::Union{A,Nothing}=nothing, tmp_vec2::Union{A,Nothing}=nothing) where {T,A}
     p, n = size(data)
     @assert size(out) == (n, n)
-
     local_len = n ÷ Size()
     remainder = n % Size()
     
@@ -51,13 +50,10 @@ function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A};
 
     tmp_data = (tmp_data == nothing) ? A{T}(undef, n*(local_len_p)) : tmp_data
     @assert length(tmp_data) >= n * local_len_p
-
     tmp_dist = (tmp_dist == nothing) ? A{T}(undef, local_len_p^2) : tmp_dist
     @assert length(tmp_dist) >= local_len_p^2
-
     tmp_vec1 = (tmp_vec1 == nothing) ? A{T}(undef, local_len_p) : tmp_vec1
     @assert length(tmp_vec1) >= local_len_p
-
     tmp_vec2 = (tmp_vec2 == nothing) ? A{T}(undef, local_len_p) : tmp_vec2
     @assert length(tmp_vec2) >= local_len_p
 
@@ -71,12 +67,13 @@ function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A};
         Bcast!(other; root=r)
         other = reshape(other, p, :)
         
-        #println(out.partitioning[r+1])
         tmp_dist_cols = (Rank() < remainder) ? local_len + 1 : local_len
         tmp_dist_rows = (r < remainder) ? local_len + 1 : local_len
         tmp_dist_view = reshape(@view(tmp_dist[1:(tmp_dist_rows * tmp_dist_cols)]), 
                                       tmp_dist_rows, tmp_dist_cols)
-        euclidean_distance!(tmp_dist_view, other, this; tmp_n = @view(tmp_vec1[1:tmp_dist_rows]), tmp_m=@view(tmp_vec2[1:tmp_dist_cols]))
+        euclidean_distance!(tmp_dist_view, other, this; 
+                            tmp_n = @view(tmp_vec1[1:tmp_dist_rows]), 
+                            tmp_m=@view(tmp_vec2[1:tmp_dist_cols]))
         out.localarray[out.partitioning[r+1][2], :] .= tmp_dist_view
     end
     out 
