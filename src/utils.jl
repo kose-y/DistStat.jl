@@ -49,7 +49,7 @@ function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A};
     local_len_p = remainder > 0 ? local_len + 1 : local_len
 
     tmp_data = (tmp_data == nothing) ? A{T}(undef, p*(local_len_p)) : tmp_data
-    @assert length(tmp_data) >= n * local_len_p
+    @assert length(tmp_data) >= p * local_len_p
     tmp_dist = (tmp_dist == nothing) ? A{T}(undef, local_len_p^2) : tmp_dist
     @assert length(tmp_dist) >= local_len_p^2
     tmp_vec1 = (tmp_vec1 == nothing) ? A{T}(undef, local_len_p) : tmp_vec1

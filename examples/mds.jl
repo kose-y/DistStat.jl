@@ -31,7 +31,6 @@ mutable struct MDSVariables{T, A}
     eval_obj::Bool
     function MDSVariables(Y::MPIMatrix{T,A}, r::Int, W=one(T); eval_obj=false, seed=nothing) where {T,A}
         n    = size(Y, 1)
-        @assert m == n
 
         X = MPIMatrix{T,A}(undef, n, n)
         X .= W .* Y

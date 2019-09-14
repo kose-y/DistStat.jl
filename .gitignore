@@ -4,3 +4,4 @@
 *.sh
 examples/rslts
 *.mem
+core.*
