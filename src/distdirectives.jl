@@ -44,26 +44,26 @@ function Allgather!(sendarr::AbstractArray, recvarr::AbstractArray, count::Integ
     MPI.Allgather!(sendarr, recvarr, count, COMM_WORLD)
 end
 
-function Allgatherv!(sendarr::AbstractArray, recvarr::AbstractArray, counts::Vector{Cint})
+function Allgatherv!(sendarr::AbstractArray, recvarr::AbstractArray, counts::Vector{<:Integer})
 #### TODO: auto-detect counts (is it doable?)
-    MPI.Allgatherv!(sendarr, recvarr, counts, COMM_WORLD)
+    MPI.Allgatherv!(sendarr, recvarr, convert(Vector{Cint}, counts), COMM_WORLD)
 end
 
 function Scatter!(sendarr::AbstractArray, recvarr::AbstractArray; root::Integer=0)
     MPI.Scatter!(sendarr, recvarr, length(recvarr), root, COMM_WORLD)
 end
 
-function Scatterv!(sendarr::AbstractArray, recvarr::AbstractArray, counts::Vector{Cint}; root::Integer=0)
+function Scatterv!(sendarr::AbstractArray, recvarr::AbstractArray, counts::Vector{<:Integer}; root::Integer=0)
 #### TODO: auto-detect counts (is it doable?)
-    MPI.Scatterv!(sendarr, recvarr, counts, root, COMM_WORLD)
+    MPI.Scatterv!(sendarr, recvarr, convert(Vector{Cint}, counts), root, COMM_WORLD)
 end
 
 function Gather!(sendarr::AbstractArray, recvarr::AbstractArray; root::Integer=0)
     MPI.Gather!(sendarr, recvarr, length(sendbuf), root, COMM_WORLD)
 end
 
-function Gatherv!(sendarr::AbstractArray, recvarr::AbstractArray, counts::Vector{Cint}; root::Integer=0)
+function Gatherv!(sendarr::AbstractArray, recvarr::AbstractArray, counts::Vector{<:Integer}; root::Integer=0)
 #### TODO: auto-detect counts (is it doable?)
-    Gatherv!(sendarr, recvarr, counts, root, COMM_WORLD)
+    MPI.Gatherv!(sendarr, recvarr, convert(Vector{Cint}, counts), root, COMM_WORLD)
 end
 

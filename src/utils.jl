@@ -27,8 +27,8 @@ function euclidean_distance!(out::AbstractArray, A::AbstractMatrix, B::AbstractM
     LinearAlgebra.mul!(out, transpose(A), B)
     out .= sqrt.(max.((-2out .+ transpose(tmp_m)) .+ tmp_n, zero(T)))
 
-    if A==B
-        out[diagind(out)].= zero(T)
+    if A === B
+        out[diagind(out)] .= zero(T)
     end
     out
 end
@@ -60,13 +60,16 @@ function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A};
 
     for r in 0:Size()-1
         this = data.localarray
-
-        other = (r == Rank()) ? reshape(data.localarray,:) : 
-        (r < remainder ? @view(tmp_data[1:n*(local_len+1)]) : 
-         @view(tmp_data[1:n*local_len]))
-        sync()
-        Bcast!(other; root=r)
-        other = reshape(other, p, :)
+        if r == Rank()
+            other = data.localarray
+            sync()
+            Bcast!(reshape(data.localarray, :); root=r)
+        else
+            other = r < remainder ? @view(tmp_data[1:(p*(local_len+1))]) : @view(tmp_data[1:p*local_len])
+            sync()
+            Bcast!(other; root=r)
+            other = reshape(other, p, :)
+        end
         
         tmp_dist_cols = (Rank() < remainder) ? local_len + 1 : local_len
         tmp_dist_rows = (r < remainder) ? local_len + 1 : local_len
@@ -74,7 +77,7 @@ function euclidean_distance!(out::MPIMatrix{T,A}, data::MPIMatrix{T,A};
                                       tmp_dist_rows, tmp_dist_cols)
         euclidean_distance!(tmp_dist_view, other, this; 
                             tmp_n = @view(tmp_vec1[1:tmp_dist_rows]), 
-                            tmp_m=@view(tmp_vec2[1:tmp_dist_cols]))
+                            tmp_m = @view(tmp_vec2[1:tmp_dist_cols]))
         out.localarray[out.partitioning[r+1][2], :] .= tmp_dist_view
     end
     out 

@@ -22,16 +22,15 @@ mutable struct MDSVariables{T, A}
     θ::MPIMatrix{T,A} # r x [n]
     θ_prev::MPIMatrix{T,A} # r x [n]
     W::Union{T,MPIMatrix{T,A}} # weights, a singleton or an n x [n] MPIMatrix (a singleton is used for large-scale experiments)
-    W_sums::Union{T,MPIMatrix{T,A}} # sum of weights (by sample), a singleton or an MPIMatrix of [n] x 1.
-    tmp_rr::A # broadcasted
-    tmp_rn1::MPIMatrix{T,A}
-    tmp_rn2::MPIMatrix{T,A}
-    tmp_nn::Union{MPIMatrix, Nothing}
+    W_sums::Union{T,A} # sum of weights (by sample), a singleton or an MPIMatrix of [n] x 1.
+    tmp_rn::MPIMatrix{T,A}
     tmp_rn_local::A
-    tmp_n::MPIVector{T,A}
+    tmp_nn::MPIMatrix{T,A}
+    tmp_1n::MPIMatrix{T,A}
     tmp_n_local::A
+    eval_obj::Bool
     function MDSVariables(Y::MPIMatrix{T,A}, r::Int, W=one(T); eval_obj=false, seed=nothing) where {T,A}
-        m, n    = size(Y, 1)
+        n    = size(Y, 1)
         @assert m == n
 
         X = MPIMatrix{T,A}(undef, n, n)
@@ -40,67 +39,64 @@ mutable struct MDSVariables{T, A}
         θ      = MPIMatrix{T,A}(undef, r, n)
         θ_prev = MPIMatrix{T,A}(undef, r, n)
         rand!(θ; seed=seed, common_init=true)
-        θ .= 2θ - 1
+        θ .= 2θ .- 1
         if typeof(W) <: MPIMatrix
             fill_diag!(zero(T), W)
-            W_sums = sum(weights; dims=2)
+            W_sums = sum(weights; dims=2) # length-n vector
         elseif typeof(W) == T
             W_sums = convert(T, W * (n - 1))
         else
             error("type of W mismatch")
         end
 
-        tmp_rr  = A{T}(undef, r, r)
-        tmp_rn1 = MPIMatrix{T,A}(undef, r, n)
-        tmp_rn2 = MPIMatrix{T,A}(undef, r, n)
-        if eval_obj
-            tmp_nn = MPIMatrix{T,A}(undef, m, n)
-        else
-            tmp_nn = nothing
-        end
+        tmp_rn = MPIMatrix{T,A}(undef, r, n)
         tmp_rn_local = A{T}(undef, r, n)
+        tmp_nn = MPIMatrix{T,A}(undef, n, n)
         tmp_1n = MPIMatrix{T,A}(undef, 1, n)
         tmp_n_local = A{T}(undef, n)
-        new{T,A}(n, r, X, θ, θ_prev, W, W_sums, tmp_rr, tmp_rn1, tmp_rn2, tmp_nn, tmp_rn_local, tmp_1n, tmp_n_local)
+        new{T,A}(n, r, X, θ, θ_prev, W, W_sums, tmp_rn, tmp_rn_local,
+            tmp_nn, tmp_1n, tmp_n_local, eval_obj)
     end
 end
     
 function reset!(v::MDSVariables{T,A}; seed=nothing) where {T,A}
     rand!(v.θ; seed=seed, common_init=true)
-    v.θ .= 2v.θ - 1
+    v.θ .= 2v.θ .- 1
 end
 
-function update!(X::MPIArray, u::APGUpdate, v::MDSVariables{T,A}) where {T,A}
-    d = mul!(TODO, transpose(v.θ), v.θ)
-    v.tmp_1n      .= reshape(diag(d; dist=true), 1, n) # dist. row vector
-    v.tmp_n_local .= diag(d; dist=false) # local col vector
-    d .*= convert(T, -2.0)
-    d .+= v.tmp_1n .+ v.tmp_n_local
+function update!(X::MPIArray, u::MDSUpdate, v::MDSVariables{T,A}) where {T,A}
+    d = mul!(v.tmp_nn, transpose(v.θ), v.θ; tmp=v.tmp_rn_local)
+    diag!(v.tmp_1n, d) # dist. row vector
+    diag!(v.tmp_n_local, d) # local col vector
 
-    v.Z .= v.X ./ d
-    Z_sums .= sum(Z; dims=TODO) # length-n dist. vector
-    WmZ .= v.W .- v.Z
+    d .= -2d .+ v.tmp_1n .+ v.tmp_n_local
 
-    if typeof(self.W) == T
-        fill_diag!(WmZ, zero(T))
+    fill_diag!(d, Inf)
+
+    v.tmp_nn .= v.X ./ d # Z
+    v.tmp_1n .= sum(v.tmp_nn; dims=1) # Z sums, length-n dist. vector
+    v.tmp_nn .= v.W .- v.tmp_nn # W - Z
+
+    if typeof(v.W) == T
+        fill_diag!(v.tmp_nn, zero(T))
     end
 
-    θWmZ = mul!(TODO, v.θ, WmZ)
-    v.θ .= (v.θ .* (v.W_sums .+ Z_sums) + θWmZ) ./ (convert(T, 2.0) .* v.W_sums)
+    θWmZ = mul!(v.tmp_rn, v.θ, (v.tmp_nn); tmp=v.tmp_rn_local)
+    v.θ .= (v.θ .* (v.tmp_1n .+ v.W_sums) .+ θWmZ) ./ 2v.W_sums
 end
 
 
 function get_objective!(Y::MPIArray, u::MDSUpdate, v::MDSVariables{T,A}) where {T,A}
-    if v.tmp_nn2 != nothing
-        v.tmp_nn2 .= euclidean_disntances(v.θ)
-        return false, sum(((Y .- v.tmp_nn) .* v.W) .^ 2) / convert(T, 2.0)
+    if v.eval_obj
+        DistStat.euclidean_distance!(v.tmp_nn, v.θ)
+        return false, sum((Y .- v.tmp_nn).^2 .* v.W) / convert(T, 2.0)
     else
-        v.θ_prev .= abs.(v.θ_prev .- v.θ)
-        return false, maximum(v.θ_prev)
+        v.tmp_rn .= abs.(v.θ_prev .- v.θ)
+        return false, maximum(v.tmp_rn)
     end
 end
 
-function mds_one_iter!(Y::MPIArray, u::APGUpdate, v::NMFVariables)
+function mds_one_iter!(Y::MPIArray, u::MDSUpdate, v::MDSVariables)
     copyto!(v.θ_prev, v.θ)
     update!(Y, u, v)
 end
@@ -120,8 +116,8 @@ function loop!(Y::MPIArray, u, iterfun, evalfun, args...)
     end
 end
 
-function mds!(Y::MPIArray, u::APGUpdate, v::NMFVariables)
-    loop!(X, u, mds_one_iter!, get_objective!, v)
+function mds!(Y::MPIArray, u::MDSUpdate, v::MDSVariables)
+    loop!(Y, u, mds_one_iter!, get_objective!, v)
 end
 
 
@@ -152,13 +148,15 @@ eval_obj = opts["eval_obj"]
 
 X = MPIMatrix{T, A}(undef, m, n)
 rand!(X; common_init=init_opt, seed=0)
-uquick = APGUpdate(;maxiter=2, step=1, verbose=true)
-u = APGUpdate(;maxiter=iter, step=interval, verbose=true)
-v = NMFVariables(X, r; eval_obj=eval_obj, seed=seed)
-nmf!(X, uquick, v)
+Y = MPIMatrix{T,A}(undef, n,n)
+DistStat.euclidean_distance!(Y, X)
+uquick = MDSUpdate(;maxiter=2, step=1, verbose=true)
+u = MDSUpdate(;maxiter=iter, step=interval, verbose=true)
+v = MDSVariables(Y, r; eval_obj=eval_obj, seed=seed)
+mds!(Y, uquick, v)
 reset!(v; seed=seed)
 if DistStat.Rank() == 0
-    @time nmf!(X, u, v)
+    @time mds!(Y, u, v)
 else
-    nmf!(X, u, v)
+    mds!(Y, u, v)
 end

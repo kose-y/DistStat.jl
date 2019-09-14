@@ -1,6 +1,7 @@
 import LinearAlgebra: Transpose
 import LinearAlgebra
 export fill_diag!
+export diag!
 
 # temporary function. will actually add CUDA barrier function.
 function sync()
@@ -57,7 +58,7 @@ function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::MPIMatrix{T,AT},
 end
 
 """
-Scenario 2: short and fat matrix multiplied by a fat matrix. More communication than Scenario 1, temporary space required
+Scenario 2: short and fat matrix multiplied by a fat matrix. Temporary space required
 A: r x [p], B: p x [q], C: r x [q]
 tmp: r x p: A is Allgather!-ed.
 """
@@ -220,6 +221,7 @@ end
 
 """
     diag!(d::MPIMatrix{T,A}, M::MPIMatrix{T,A})
+returns a distributed row vector. 
 """
 function diag!(d::MPIMatrix{T,A}, M::MPIMatrix{T,A}) where {T,A}
     @assert size(d,1) == 1
@@ -230,6 +232,7 @@ end
 
 """
     diag!(d::AbstractVector, M::MPIMatrix{T,A})
+returns a local col vector.
 """
 function diag!(d::AbstractVector, M::MPIMatrix{T,A}) where {T,A}
     @assert size(d,1) == size(M, 1)
