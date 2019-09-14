@@ -1,7 +1,7 @@
-import LinearAlgebra: Transpose
+import LinearAlgebra: Transpose, opnorm
 import LinearAlgebra
-export fill_diag!
-export diag!
+import Random: seed!
+export fill_diag!, diag!
 
 # temporary function. will actually add CUDA barrier function.
 function sync()
@@ -150,7 +150,7 @@ Scenario 6: distributed matrix x broadcasted vector multiplications
 """
 
 """
-6.1: A: r x [q], B: q x 1, C: r x 1
+6.1: no vector distributed
 """
 function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::AbstractVector{T}) where {T,AT}
     localA = get_local(A)
@@ -160,8 +160,17 @@ function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::Abstrac
     C
 end
 
+function LinearAlgebra.mul!(C::AbstractVector{T}, A::Transpose{T, MPIMatrix{T,AT}}, B::AbstractVector{T}) where {T,AT}
+    localA = get_local(A)
+    LinearlAlgebra.mul!(C, localA, B[transpose(A).partitioning[Rank()+1][2]])
+    sync()
+    Allreduce!(C)
+    C
+end
+
+
 """
-6.2: A: r x [q], B: [q] x 1, C: r x 1
+6.2: one of the vectors distributed
 """
 function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::MPIVector{T,AT}) where {T,AT}
     localA = get_local(A)
@@ -172,9 +181,22 @@ function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::MPIVect
     C
 end
 
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}}, B::AbstractVector{T}) where {T,AT}
+    localA = get_local(A)
+    localC = get_local(C)
+    LinearAlgebra.mul!(localC, localA, B)
+    C
+end
+
 """
-6.3: A: [p] x q, B: [q] x 1, C: [p] x 1
+6.3: both vectors distributed
 """
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::MPIMatrix{T,AT}, B::MPIVector{T,AT}; tmp::AbstractArray{T}=AT{T}(undef, size(C, 1))) where {T,AT}
+    LinearAlgebra.mul!(tmp, A, B)
+    localC = get_local(C)
+    localC .= tmp[C.partitioning[Rank()+1][1]]
+end
+
 function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},B::MPIVector{T,AT};tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
     localA = get_local(A)
     localC = get_local(C)
@@ -188,15 +210,7 @@ function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},
     C
 end
 
-"""
-6.4: A: [p] x r, B: r x 1, C: [p] x 1
-"""
-function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}}, B::AbstractVector{T}) where {T,AT}
-    localA = get_local(A)
-    localC = get_local(C)
-    LinearAlgebra.mul!(localC, localA, B)
-    C
-end
+
 
 
 
@@ -251,4 +265,69 @@ fills the diagonal of M with x.
 """
 @inline function fill_diag!(M::MPIMatrix, x, k::Integer=0)
     M.localarray[LinearAlgebra.diagind(M, k)] .= x
+end
+
+"""
+    opnorm(A::MPIMatrix; method="power", tol=1e-8)
+
+Estimates operator l2 norm of MPIMatrix A. If `method=="power", it uses the power iteration.
+If `method=="quick"`, it computes the product of matrix l1 norm and the matrix l-infty norm. 
+"""
+function opnorm(A::MPIMatrix; method::String="power", tol=1e-6, maxiter=1000, seed=777, verbose=false)
+    if method == "power"
+        _opnorm_power(A; tol=tol, maxiter=maxiter, seed=seed, verbose=verbose)
+    elseif method == "quick"
+        _opnorm_quick(A)
+    else
+        @error("Invalid method. Valid values are: \"power\" and \"quick\".")
+    end
+end
+
+function opnorm(A::MPIMatrix, p::Real; method::String="power", tol=1e-6, maxiter=1000, seed=777, verbose=false)
+    if p == 1
+        _opnorm_l1(A)
+    elseif p == 2
+        opnorm(A; method=method, tol=tol, maxiter=maxiter, seed=seed, verbose=verbose)
+    elseif p == Inf
+        _opnorm_linfty(A)
+    else
+        @error("Invalid p for opnorm. Valid values are: 1, 2, and Inf.")
+    end
+end
+    
+function _opnorm_l1(A::MPIMatrix)
+    maximum(sum(abs.(A); dims=1))
+end
+
+function _opnorm_linfty(A::MPIMatrix)
+    maximum(sum(abs.(A); dims=2))
+end
+
+function _opnorm_power(A::MPIMatrix{T,AT}; tol=1e-6, maxiter=1000, seed=777, verbose=false) where {T, AT}
+    verbose && Rank() == 0 && println("computing max singular value...")
+    m, n = size(A)
+    seed!(seed)
+    v = MPIVector{T,AT}(undef, n)
+    randn!(v)
+    Av = MPIVector{T,AT}(undef, m)
+    LinearAlgebra.mul!(Av, A, v)
+    s, s_prev = -Inf, -Inf
+    for i in 1:maxiter
+        LinearAlgebra.mul!(v, transpose(A), Av)
+        v ./= sqrt(sum(v.^2))
+        LinearAlgebra.mul!(Av, A, v)
+        s = sqrt(sum(Av.^2))
+
+        if abs((s_prev - s)/s) < tol
+            break
+        end
+        s_prev = s
+        verbose && Rank() == 0 && i%100 == 0 && println("iteration $i")
+    end
+    verbose && Rank() == 0 && println("done computing max singular value: $s")
+    s
+end
+
+function _opnorm_quick(A::MPIMatrix)
+    _opnorm_l1(A) * _opnorm_linfty(A)
 end
