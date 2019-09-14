@@ -72,8 +72,8 @@ end
 
 function update!(X::MPIArray, u::APGUpdate, v::MDSVariables{T,A}) where {T,A}
     d = mul!(TODO, transpose(v.θ), v.θ)
-    v.tmp_1n      .= reshape(diag(d; dist=false), 1, n) # dist. row vector
-    v.tmp_n_local .= diag(d; dist=true) # local col vector
+    v.tmp_1n      .= reshape(diag(d; dist=true), 1, n) # dist. row vector
+    v.tmp_n_local .= diag(d; dist=false) # local col vector
     d .*= convert(T, -2.0)
     d .+= v.tmp_1n .+ v.tmp_n_local
 
