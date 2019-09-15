@@ -1,7 +1,7 @@
 #!/bin/sh
 #$ -cwd
 #$ -N mds
-#$ -pe mpi 32
+#$ -pe mpi 576
 #$ -j y
 date
 module load mpi/openmpi-x86_64
@@ -9,6 +9,6 @@ export ROWS=$1
 export COLS=$2
 export R=$3
 . /shared/julia_setup.sh
-export OMP_NUM_THREADS=18
+export OMP_NUM_THREADS=1
 echo $ROWS
-mpirun -np 32 julia --project=/shared/julia_pkgs/dev/DistStat/examples /shared/julia_pkgs/dev/DistStat/examples/mds.jl --rows=$ROWS --cols=$COLS --r=$R 
+mpirun -np 576 julia --project=/shared/julia_pkgs/dev/DistStat/examples /shared/julia_pkgs/dev/DistStat/examples/mds.jl --rows=$ROWS --cols=$COLS --r=$R 
