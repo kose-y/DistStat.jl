@@ -1,0 +1,13 @@
+#!/bin/sh
+#$ -cwd
+#$ -N cox
+#$ -pe mpi 72
+#$ -j y
+date
+module load mpi/openmpi-x86_64
+export ROWS=$1
+export COLS=$2
+export LAMBDA=$3
+. /shared/julia_setup.sh
+export OMP_NUM_THREADS=1
+mpirun -np 72 julia --project=/shared/julia_pkgs/dev/DistStat/examples /shared/julia_pkgs/dev/DistStat/examples/cox.jl --rows=$ROWS --cols=$COLS --lambda=$LAMBDA
