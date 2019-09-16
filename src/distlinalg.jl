@@ -210,9 +210,15 @@ function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},
     C
 end
 
+"""
+    LinearAlgebra.dot(A::MPIArray, B::MPIArray)
 
-
-
+dot product of two MPI vectors.
+"""
+@inline function LinearAlgebra.dot(A::MPIArray, B::MPIArray)
+   c = LinearAlgebra.dot(A.localarray, B.localarray)
+   MPI.Allreduce(c, MPI.SUM, MPI.COMM_WORLD)
+end
 
 """
     LinearAlgebra.diagind(M::MPIMatrix, k)

@@ -37,9 +37,7 @@ uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
 [[DistStat]]
 deps = ["Adapt", "CustomUnitRanges", "LinearAlgebra", "MPI", "Random", "Requires", "Sockets"]
-git-tree-sha1 = "afa4c073e26bf5396480c0b97ec890dc185be9a5"
-repo-rev = "master"
-repo-url = "https://github.com/kose-y/DistStat.jl"
+path = "/home/kose/.julia/dev/DistStat"
 uuid = "3d267f78-ae7e-11e9-2f9f-dba0a42dab65"
 version = "0.1.0"
 

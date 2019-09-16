@@ -51,10 +51,25 @@ function parse_commandline_nmf()
             help = "intermediate size"
             arg_type = Int
             default = 20
-        end
+    end
     return parse_args(s)
 end
 
 function parse_commandline_mds()
     parse_commandline_nmf()
+end
+
+function parse_commandline_cox()
+    s = parse_commandline()
+    @add_arg_table s begin
+        "--censor_rate"
+            help = "rate of censored subjects"
+            arg_type = Float64
+            default=0.5
+        "--lambda"
+            help = "regularization parameter"
+            arg_type = Float64
+            default=0.0
+    end
+    return parse_args(s)
 end
