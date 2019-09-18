@@ -32,7 +32,7 @@ mutable struct COXVariables{T, A}
     eval_obj::Bool
     function COXVariables(X::MPIMatrix{T,A}, δ::A, λ::AbstractFloat,
                             t::A;
-                            σ::T=1/(2*opnorm(X; verbose=true)^2), 
+                            σ::T=convert(T, 1/(2*opnorm(X; verbose=true)^2)), 
                             eval_obj=false) where {T,A}
         m, n = size(X)
         β = MPIVector{T,A}(undef, n)
