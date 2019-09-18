@@ -222,17 +222,19 @@ end
 
 
 """
-Sparese matrix-vector multiplications
+Sparse matrix-vector multiplications
 """
 function LinearAlgebra.mul!(C::AbstractVector{T}, A::AbstractSparseMatrix, B::MPIVector{T,AT};
                             tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
     @assert length(C) == size(A,1) && length(B) == size(A,2)
     @assert length(tmp) == length(B)
-    localB = get_local(B)
-    tmp[B.partitioning[Rank()+1][1]] .= localB
-    LinearAlgebra.mul!(C, A, tmp)
+
+    # Allgather
     sync()
-    Allreduce!(C)
+    (Allgather_ftn!, sendbuf, count_arg) = Allgather_opt(B)
+    Allgather_ftn!(sendbuf, tmp, count_arg)
+
+    LinearAlgebra.mul!(C, A, tmp)
     C
 end
 
@@ -251,12 +253,8 @@ function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::AbstractSparseMatrix, B::MPIV
                             tmp_n::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
     @assert length(C) == size(A,1) && length(B) == size(A,2)
     @assert length(tmp_m) == size(A,1) && length(tmp_n) == size(A,2)
-    localB = get_local(B)
+    LinearAlgebra.mul!(tmp_m, A, B)
     localC = get_local(C)
-    tmp_n[B.partitioning[Rank()+1][1]] .= localB
-    LinearAlgebra.mul!(tmp_m, A, tmp_n)
-    sync()
-    Allreduce!(tmp_m)
     localC .= tmp_m[C.partitioning[Rank()+1][1]]
     C
 end
