@@ -1,6 +1,7 @@
 import LinearAlgebra: Transpose, opnorm
 import LinearAlgebra
 import Random: seed!
+using SparseArrays
 export fill_diag!, diag!
 
 # temporary function. will actually add CUDA barrier function.
@@ -38,7 +39,8 @@ Scenario 1: inner product, result distributed, temporary space required
 A: r x [p], B: [p] x q, C: r x [q]
 tmp: r x q, for local computation
 """
-function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::Transpose{T, MPIMatrix{T,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(A,1), size(B,2))) where {T,AT}
+function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::Transpose{T, MPIMatrix{T,AT}}; 
+                            tmp::AbstractArray{T,2}=AT{T}(undef, size(A,1), size(B,2))) where {T,AT}
     @assert size(C,1) == size(A,1) && size(C,2) == size(B,2)
     @assert size(A,1) == size(tmp,1) && size(B,2) == size(tmp,2)
     localA = get_local(A)
@@ -53,7 +55,8 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::Transpose
     C
 end
 
-function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::MPIMatrix{T,AT},B::Transpose{T,MPIMatrix{T,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(A,1))) where {T,AT}
+function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::MPIMatrix{T,AT},B::Transpose{T,MPIMatrix{T,AT}}; 
+                            tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(A,1))) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A);tmp=tmp)
 end
 
@@ -62,7 +65,8 @@ Scenario 2: short and fat matrix multiplied by a fat matrix. Temporary space req
 A: r x [p], B: p x [q], C: r x [q]
 tmp: r x p: A is Allgather!-ed.
 """
-function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::MPIMatrix{T,AT}; tmp::AbstractArray{T,2}=AT{T}(undef, size(A,1), size(A,2))) where {T,AT}
+function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::MPIMatrix{T,AT}; 
+                            tmp::AbstractArray{T,2}=AT{T}(undef, size(A,1), size(A,2))) where {T,AT}
     @assert size(C,1) == size(A,1) && size(C,2) == size(B,2)
     @assert size(A,1) == size(tmp,1) && size(A, 2) == size(tmp, 2)
     localA = get_local(A)
@@ -78,7 +82,8 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::MPIMatrix
     C
 end
 
-function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::Transpose{T,MPIMatrix{T,AT}}; tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(B,1))) where {T,AT}
+function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::Transpose{T,MPIMatrix{T,AT}}; 
+                            tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(B,1))) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A); tmp=tmp)
 end
 
@@ -100,7 +105,8 @@ end
 Scenario 4: outer product, temporary space required
 transpose(A) is Allgather!-ed.
 """
-function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Transpose{T,MPIMatrix{T,AT}}, B::MPIMatrix{T,AT}; tmp::AbstractArray{T,2}=AT{T}(undef,size(A,2),size(A,1))) where {T,AT}
+function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Transpose{T,MPIMatrix{T,AT}}, B::MPIMatrix{T,AT}; 
+                            tmp::AbstractArray{T,2}=AT{T}(undef,size(A,2),size(A,1))) where {T,AT}
     @assert size(C,1) == size(A,1) && size(C,2) == size(B,2)
     @assert size(A,2) == size(tmp,1) && size(A,1) == size(tmp,2)
     localA = get_local(A)
@@ -116,7 +122,8 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},
     C
 end
 
-function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::MPIMatrix{T,AT}; tmp::AbstractArray{T,2}=AT{T}(undef,size(B,1), size(B,2))) where {T,AT}
+function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::MPIMatrix{T,AT}; 
+                            tmp::AbstractArray{T,2}=AT{T}(undef,size(B,1), size(B,2))) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A);tmp=tmp)
 end
 
@@ -137,7 +144,8 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::Transpose{T,ATT} where ATT <:
     C
 end
 
-function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::Transpose{T, ATT} where ATT <: AbstractMatrix{T}) where {T,AT}
+function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, 
+                            B::Transpose{T, ATT} where ATT <: AbstractMatrix{T}) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A))
 end
 
@@ -191,13 +199,15 @@ end
 """
 6.3: both vectors distributed
 """
-function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::MPIMatrix{T,AT}, B::MPIVector{T,AT}; tmp::AbstractArray{T}=AT{T}(undef, size(C, 1))) where {T,AT}
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::MPIMatrix{T,AT}, B::MPIVector{T,AT}; 
+                            tmp::AbstractArray{T}=AT{T}(undef, size(C, 1))) where {T,AT}
     LinearAlgebra.mul!(tmp, A, B)
     localC = get_local(C)
     localC .= tmp[C.partitioning[Rank()+1][1]]
 end
 
-function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},B::MPIVector{T,AT};tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},B::MPIVector{T,AT};
+                            tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
     localA = get_local(A)
     localC = get_local(C)
 
@@ -207,6 +217,47 @@ function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},
     Allgather_ftn!(sendbuf, tmp, count_arg)
 
     LinearAlgebra.mul!(localC, localA, tmp)
+    C
+end
+
+
+"""
+Sparese matrix-vector multiplications
+"""
+function LinearAlgebra.mul!(C::AbstractVector{T}, A::AbstractSparseMatrix, B::MPIVector{T,AT};
+                            tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
+    @assert length(C) == size(A,1) && length(B) == size(A,2)
+    @assert length(tmp) == length(B)
+    localB = get_local(B)
+    tmp[B.partitioning[Rank()+1][1]] .= localB
+    LinearAlgebra.mul!(C, A, tmp)
+    sync()
+    Allreduce!(C)
+    C
+end
+
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::AbstractSparseMatrix, B::AbstractVector{T};
+                            tmp::AbstractArray{T}=AT{T}(undef, size(A,1))) where {T,AT}
+    @assert length(C) == size(A,1) && length(B) == size(A,2)
+    @assert length(tmp) == length(C)
+    localC = get_local(C)
+    LinearAlgebra.mul!(tmp, A, B)
+    localC .= tmp[C.partitioning[Rank()+1][1]]
+    C
+end
+
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::AbstractSparseMatrix, B::MPIVector{T,AT};
+                            tmp_m::AbstractArray{T}=AT{T}(undef, size(A,1)),
+                            tmp_n::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
+    @assert length(C) == size(A,1) && length(B) == size(A,2)
+    @assert length(tmp_m) == size(A,1) && length(tmp_n) == size(A,2)
+    localB = get_local(B)
+    localC = get_local(C)
+    tmp_n[B.partitioning[Rank()+1][1]] .= localB
+    LinearAlgebra.mul!(tmp_m, A, tmp_n)
+    sync()
+    Allreduce!(tmp_m)
+    localC .= tmp_m[C.partitioning[Rank()+1][1]]
     C
 end
 
@@ -233,7 +284,8 @@ end
 """
     LinearAlgebra.diag(M::MPIMatrix{T,A}, k; dist::Bool=false) where {T,A}
 
-returns the diagonal of M. If dist is false, the result is a broadcasted A{T,1}. otherwise, the result is distributed 1 x n "row vector". Distributed return is only valid for a square matrix (due to current way of distribution). 
+returns the diagonal of M. If dist is false, the result is a broadcasted A{T,1}. otherwise, the result is 
+distributed 1 x n "row vector". Distributed return is only valid for a square matrix (due to current way of distribution). 
 """
 function LinearAlgebra.diag(M::MPIMatrix{T,A}, k::Integer=0; dist::Bool=false) where {T,A}
     # TODO
