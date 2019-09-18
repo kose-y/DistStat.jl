@@ -42,10 +42,10 @@ mutable struct COXVariables{T, A}
 
         δ = convert(Vector{T}, δ)
 
-        π_ind = MPIMatrix{T,A}(undef, n, n)
+        π_ind = MPIMatrix{T,A}(undef, m, m)
         t_dist = distribute(reshape(t, 1, :))
         fill!(π_ind, one(T))
-        π_ind .= (π_ind .* t_dist .- t) .<= 0
+        π_ind .= ((π_ind .* t_dist) .- t) .<= 0
 
         tmp_n = MPIVector{T,A}(undef, n)
         tmp_1m = MPIMatrix{T,A}(undef, 1, m)
