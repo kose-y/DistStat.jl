@@ -15,6 +15,12 @@ version = "0.6.2"
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
+[[BinaryProvider]]
+deps = ["Libdl", "Logging", "SHA"]
+git-tree-sha1 = "c7361ce8a2129f20b0e05a89f7070820cfed6648"
+uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
+version = "0.5.6"
+
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
 git-tree-sha1 = "84aa74986c5b9b898b0d1acaf3258741ee64754f"
@@ -36,8 +42,8 @@ deps = ["Mmap"]
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
 [[DistStat]]
-deps = ["Adapt", "CustomUnitRanges", "LinearAlgebra", "MPI", "Random", "Requires", "Sockets"]
-path = "/shared/julia_pkgs/dev/DistStat"
+deps = ["Adapt", "CustomUnitRanges", "LinearAlgebra", "MPI", "Random", "Requires", "Sockets", "SparseArrays"]
+path = "/home/kose/.julia/dev/DistStat"
 uuid = "3d267f78-ae7e-11e9-2f9f-dba0a42dab65"
 version = "0.1.0"
 
@@ -74,6 +80,12 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
+
+[[NPZ]]
+deps = ["Compat", "ZipFile"]
+git-tree-sha1 = "a9837d6dc62c8a159f8e788d51c81ccee248db0e"
+uuid = "15e1cf62-19b3-5cfa-8e77-841668bca605"
+version = "0.4.0"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -134,3 +146,9 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [[Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+
+[[ZipFile]]
+deps = ["BinaryProvider", "Libdl", "Printf"]
+git-tree-sha1 = "580ce62b6c14244916cc28ad54f8a2e2886f843d"
+uuid = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
+version = "0.8.3"

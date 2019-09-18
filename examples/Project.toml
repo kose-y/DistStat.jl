@@ -1,3 +1,4 @@
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 DistStat = "3d267f78-ae7e-11e9-2f9f-dba0a42dab65"
+NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"

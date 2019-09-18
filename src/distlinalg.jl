@@ -224,7 +224,7 @@ end
 """
 Sparse matrix-vector multiplications
 """
-function LinearAlgebra.mul!(C::AbstractVector{T}, A::AbstractSparseMatrix, B::MPIVector{T,AT};
+function LinearAlgebra.mul!(C::AbstractVector{T}, A::Union{AbstractSparseMatrix,Transpose{T,<:AbstractSparseMatrix}}, B::MPIVector{T,AT};
                             tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
     @assert length(C) == size(A,1) && length(B) == size(A,2)
     @assert length(tmp) == length(B)
@@ -238,7 +238,7 @@ function LinearAlgebra.mul!(C::AbstractVector{T}, A::AbstractSparseMatrix, B::MP
     C
 end
 
-function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::AbstractSparseMatrix, B::AbstractVector{T};
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Union{AbstractSparseMatrix,Transpose{T,<:AbstractSparseMatrix}}, B::AbstractVector{T};
                             tmp::AbstractArray{T}=AT{T}(undef, size(A,1))) where {T,AT}
     @assert length(C) == size(A,1) && length(B) == size(A,2)
     @assert length(tmp) == length(C)
@@ -248,7 +248,7 @@ function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::AbstractSparseMatrix, B::Abst
     C
 end
 
-function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::AbstractSparseMatrix, B::MPIVector{T,AT};
+function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Union{AbstractSparseMatrix,Transpose{T,<:AbstractSparseMatrix}}, B::MPIVector{T,AT};
                             tmp_m::AbstractArray{T}=AT{T}(undef, size(A,1)),
                             tmp_n::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
     @assert length(C) == size(A,1) && length(B) == size(A,2)
