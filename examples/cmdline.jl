@@ -7,14 +7,6 @@ function parse_commandline()
         "--gpu"
             help = "use gpu"
             action = :store_true
-        "--rows"
-            help = "number of rows"
-            arg_type = Int
-            default = 10_000
-        "--cols"
-            help = "number of cols"
-            arg_type = Int
-            default = 10_000
         "--iter"
             help = "number of iterations"
             arg_type = Int
@@ -47,6 +39,14 @@ end
 function parse_commandline_nmf()
     s = parse_commandline()
     @add_arg_table s begin
+        "--rows"
+            help = "number of rows"
+            arg_type = Int
+            default = 10_000
+        "--cols"
+            help = "number of cols"
+            arg_type = Int
+            default = 10_000
         "--r"
             help = "intermediate size"
             arg_type = Int
@@ -62,11 +62,33 @@ end
 function parse_commandline_cox()
     s = parse_commandline()
     @add_arg_table s begin
+        "--rows"
+            help = "number of rows"
+            arg_type = Int
+            default = 10_000
+        "--cols"
+            help = "number of cols"
+            arg_type = Int
+            default = 10_000
         "--censor_rate"
             help = "rate of censored subjects"
             arg_type = Float64
             default=0.5
         "--lambda"
+            help = "regularization parameter"
+            arg_type = Float64
+            default=0.0
+    end
+    return parse_args(s)
+end
+
+function parse_commandline_pet()
+    s = parse_commandline()
+    @add_arg_table s begin
+        "--data"
+            help = "path to datafile"
+            arg_type = String
+        "--mu"
             help = "regularization parameter"
             arg_type = Float64
             default=0.0
