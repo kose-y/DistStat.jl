@@ -7,6 +7,10 @@ function fill!(a::MPIArray, x)
     forlocalpart!(y -> fill!(y, x), a) 
 end
 
+"""
+    distribute(a::AbstractArray; root=0, A=nothing)
+distributes a dense array.
+"""
 function distribute(a::AbstractArray{T,N}; root=0, A=nothing) where {T, N}
     if A == nothing
         TA = typeof(a)
@@ -26,6 +30,36 @@ function distribute(a::AbstractArray{T,N}; root=0, A=nothing) where {T, N}
         sync()
         push!(reqs, Irecv!(rslt.localarray, root))
     end
+    for r in reqs
+        MPI.Wait!(r)
+    end
+    rslt
+end
+
+"""
+    distribute(a::AbstractSparseMatrix; root=0, A=Array)
+distributes a sparse array into a dense MPIMatrix.
+"""
+function distribute(a::AbstractSparseMatrix; root=0, A=Array)
+    #TODO: make it work on GPUs.
+    T = eltype(a)
+    reqs = MPI.Request[]
+    size_a = MPI.bcast(size(a), root, MPI.COMM_WORLD)
+    rslt = MPIMatrix{T,A}(undef, size_a[1], size_a[2])
+    if Rank() == root
+        for r = 0:Size() - 1
+            r == Rank() && continue
+            sync()
+            push!(reqs, MPI.isend(a[:, rslt.partitioning[r+1][2]], r, 0, MPI.COMM_WORLD))
+        end
+        local_sparse = a[:, rslt.partitioning[Rank()+1][2]]
+        rslt.localarray .= A(local_sparse)
+    else
+        sync()
+        local_sparse = MPI.recv(root, 0, MPI.COMM_WORLD)[1]
+        rslt.localarray .= A(local_sparse)
+    end
+
     for r in reqs
         MPI.Wait!(r)
     end
