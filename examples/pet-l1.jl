@@ -35,7 +35,7 @@ mutable struct PETVariables_l1{T,A}
     eval_obj::Bool
     function PETVariables_l1(y::AbstractArray{T}, E::MPIMatrix{T,A}, 
                                 D::AbstractSparseMatrix, 
-                                rho::Real; tau=1/3, sigma=1/3, eval_obj=false, eps::Real=1e-20) where {T,A}
+                                rho::Real; tau=1/3, sigma=1/3, eval_obj=false, eps::Real=1e-16) where {T,A}
         m, n = size(E)
         d = size(D, 1)
 
@@ -49,6 +49,7 @@ mutable struct PETVariables_l1{T,A}
         z = A{T}(undef, m)
         fill!(z, -one(T))
         w = A{T}(undef, d)
+        fill!(w, zero(T))
 
         Et1 = MPIMatrix{T,A}(undef, 1, n)
         mul!(tmp_n, transpose(E), -z)
@@ -70,6 +71,8 @@ end
 function reset!(v::PETVariables_l1)
     fill!(v.lambda, one(T))
     fill!(v.lambda_prev, one(T))
+    fill!(v.z, -one(T))
+    fill!(v.w, zero(T))
 end
 
 
@@ -204,6 +207,7 @@ u = PETUpdate_l1(;maxiter=iter, step=interval, verbose=true)
 v = PETVariables_l1(y, E, D, rho; eval_obj=eval_obj, sigma=sigma, tau=tau)
 pet_l1!(uquick, v)
 reset!(v)
+DistStat.Barrier()
 if DistStat.Rank() == 0
     @time pet_l1!(u, v)
 else
