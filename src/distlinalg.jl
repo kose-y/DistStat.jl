@@ -196,6 +196,7 @@ function LinearAlgebra.mul!(C::MPIColVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT
     localA = get_local(A)
     localC = get_local(C)
     LinearAlgebra.mul!(localC, localA, B)
+    # undefined in CuArrays: mul!(::Transpose{Float64,CuArray{Float64,2}}, ::Transpose{Float64,CuArray{Float64,2}}, ::CuArray{Float64,1})
     C
 end
 

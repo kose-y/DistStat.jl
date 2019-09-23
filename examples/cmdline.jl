@@ -93,5 +93,23 @@ function parse_commandline_pet()
             arg_type = Float64
             default=0.0
     end
+    return s
+end
+
+function parse_commandline_pet_l2()
+    return parse_args(s)
+end
+function parse_commandline_pet_l1()
+    s = parse_commandline_pet()
+    @add_arg_table s begin
+        "--sigma"
+            help = "dual stepsize"
+            arg_type = Float64
+            default=1/3
+        "--tau"
+            help = "primal stepsize"
+            arg_type = Float64
+            default=1/3
+    end
     return parse_args(s)
 end

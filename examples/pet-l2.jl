@@ -124,7 +124,7 @@ function pet_l2!(u::PETUpdate_l2, v::PETVariables_l2)
 end
 
 include("cmdline.jl")
-opts = parse_commandline_pet()
+opts = parse_commandline_pet_l2()
 if DistStat.Rank() == 0
     println("world size: ", DistStat.Size())
     println(opts)

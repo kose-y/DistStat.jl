@@ -133,7 +133,7 @@ function pet_l1!(u::PETUpdate_l1, v::PETVariables_l1)
 end
 
 include("cmdline.jl")
-opts = parse_commandline_pet()
+opts = parse_commandline_pet_l1()
 if DistStat.Rank() == 0
     println("world size: ", DistStat.Size())
     println(opts)
@@ -160,7 +160,8 @@ eval_obj = opts["eval_obj"]
 
 datafile = opts["data"]
 rho = opts["reg"]
-
+sigma = opts["sigma"]
+tau   = opts["tau"]
 if DistStat.Rank() == 0
     dat = npzread(datafile)
 
@@ -200,7 +201,7 @@ D = MPI.bcast((D), 0, MPI.COMM_WORLD)
 
 uquick = PETUpdate_l1(;maxiter=2, step=1, verbose=true)
 u = PETUpdate_l1(;maxiter=iter, step=interval, verbose=true)
-v = PETVariables_l1(y, E, D, rho; eval_obj=eval_obj)
+v = PETVariables_l1(y, E, D, rho; eval_obj=eval_obj, sigma=sigma, tau=tau)
 pet_l1!(uquick, v)
 reset!(v)
 if DistStat.Rank() == 0
