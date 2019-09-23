@@ -97,6 +97,7 @@ function parse_commandline_pet()
 end
 
 function parse_commandline_pet_l2()
+    s = parse_commandline_pet()
     return parse_args(s)
 end
 function parse_commandline_pet_l1()
