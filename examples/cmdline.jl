@@ -88,7 +88,7 @@ function parse_commandline_pet()
         "--data"
             help = "path to datafile"
             arg_type = String
-        "--mu"
+        "--reg"
             help = "regularization parameter"
             arg_type = Float64
             default=0.0
