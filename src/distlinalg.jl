@@ -156,6 +156,9 @@ end
 """
 Scenario 6: distributed matrix x broadcasted vector multiplications
 """
+const MPIColVector{T,AT} = Union{MPIVector{T,AT},Transpose{T,MPIMatrix{T,AT}}}
+get_MPIArray(m::MPIArray) = m
+get_MPIArray(m::Transpose{T,MPIMatrix{T,A}}) where {T,A} = transpose(m)
 
 """
 6.1: no vector distributed
@@ -180,7 +183,7 @@ end
 """
 6.2: one of the vectors distributed
 """
-function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::MPIVector{T,AT}) where {T,AT}
+function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::MPIColVector{T,AT}) where {T,AT}
     localA = get_local(A)
     localB = get_local(B)
     LinearAlgebra.mul!(C, localA, localB)
@@ -189,7 +192,7 @@ function LinearAlgebra.mul!(C::AbstractVector{T}, A::MPIMatrix{T,AT}, B::MPIVect
     C
 end
 
-function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}}, B::AbstractVector{T}) where {T,AT}
+function LinearAlgebra.mul!(C::MPIColVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}}, B::AbstractVector{T}) where {T,AT}
     localA = get_local(A)
     localC = get_local(C)
     LinearAlgebra.mul!(localC, localA, B)
@@ -199,14 +202,15 @@ end
 """
 6.3: both vectors distributed
 """
-function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::MPIMatrix{T,AT}, B::MPIVector{T,AT}; 
+function LinearAlgebra.mul!(C::MPIColVector{T,AT}, A::MPIMatrix{T,AT}, B::MPIColVector{T,AT}; 
                             tmp::AbstractArray{T}=AT{T}(undef, size(C, 1))) where {T,AT}
     LinearAlgebra.mul!(tmp, A, B)
     localC = get_local(C)
-    localC .= tmp[C.partitioning[Rank()+1][1]]
+    C_mpi = get_MPIArray(C)
+    localC .= tmp[C_mpi.partitioning[Rank()+1][1]]
 end
 
-function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},B::MPIVector{T,AT};
+function LinearAlgebra.mul!(C::MPIColVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},B::MPIColVector{T,AT};
                             tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
     localA = get_local(A)
     localC = get_local(C)
@@ -215,17 +219,19 @@ function LinearAlgebra.mul!(C::MPIVector{T,AT}, A::Transpose{T,MPIMatrix{T,AT}},
     sync()
     (Allgather_ftn!, sendbuf, count_arg) = Allgather_opt(B)
     Allgather_ftn!(sendbuf, tmp, count_arg)
-
     LinearAlgebra.mul!(localC, localA, tmp)
     C
 end
 
 
+
+
+const AbstractSparseOrTranspose{T} = Union{AbstractSparseMatrix{T, <:Integer},Transpose{T,<:AbstractSparseMatrix}}
+
+
 """
 Sparse matrix-vector multiplications
 """
-const MPIColVector{T,AT} = Union{MPIVector{T,AT},Transpose{T,MPIMatrix{T,AT}}}
-const AbstractSparseOrTranspose{T} = Union{AbstractSparseMatrix{T, <:Integer},Transpose{T,<:AbstractSparseMatrix}}
 function LinearAlgebra.mul!(C::AbstractVector{T}, A::AbstractSparseOrTranspose{T}, B::MPIColVector{T,AT};
                             tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
     @assert length(C) == size(A,1) && length(B) == size(A,2)
@@ -246,7 +252,8 @@ function LinearAlgebra.mul!(C::MPIColVector{T,AT}, A::AbstractSparseOrTranspose{
     @assert length(tmp) == length(C)
     localC = get_local(C)
     LinearAlgebra.mul!(tmp, A, B)
-    localC .= tmp[C.partitioning[Rank()+1][1]]
+    C_mpi = get_MPIArray(C)
+    localC .= tmp[C_mpi.partitioning[Rank()+1][1]]
     C
 end
 
@@ -257,7 +264,8 @@ function LinearAlgebra.mul!(C::MPIColVector{T,AT}, A::AbstractSparseOrTranspose{
     @assert length(tmp_m) == size(A,1) && length(tmp_n) == size(A,2)
     LinearAlgebra.mul!(tmp_m, A, B)
     localC = get_local(C)
-    localC .= tmp_m[C.partitioning[Rank()+1][1]]
+    C_mpi = get_MPIArray(C)
+    localC .= tmp_m[C_mpi.partitioning[Rank()+1][1]]
     C
 end
 

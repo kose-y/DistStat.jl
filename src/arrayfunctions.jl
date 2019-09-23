@@ -41,7 +41,6 @@ end
 distributes a sparse array into a dense MPIMatrix.
 """
 function distribute(a::AbstractSparseMatrix; root=0, A=Array)
-    #TODO: make it work on GPUs.
     T = eltype(a)
     reqs = MPI.Request[]
     size_a = MPI.bcast(size(a), root, MPI.COMM_WORLD)
