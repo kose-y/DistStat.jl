@@ -5,3 +5,5 @@
 examples/rslts
 *.mem
 core.*
+Manifest.toml
+*/Manifest.toml
