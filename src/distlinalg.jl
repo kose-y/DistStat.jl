@@ -173,7 +173,8 @@ end
 
 function LinearAlgebra.mul!(C::AbstractVector{T}, A::Transpose{T, MPIMatrix{T,AT}}, B::AbstractVector{T}) where {T,AT}
     localA = get_local(A)
-    LinearlAlgebra.mul!(C, localA, B[transpose(A).partitioning[Rank()+1][2]])
+    fill!(C, zero(T))
+    LinearAlgebra.mul!(C[transpose(A).partitioning[Rank()+1][2]], localA, B[transpose(A).partitioning[Rank()+1][1]])
     sync()
     Allreduce!(C)
     C
@@ -384,12 +385,11 @@ function _opnorm_power(A::MPIMatrix{T,AT}; tol=1e-6, maxiter=1000, seed=777, ver
         v ./= sqrt(sum(v.^2))
         LinearAlgebra.mul!(Av, A, v)
         s = sqrt(sum(Av.^2))
-
         if abs((s_prev - s)/s) < tol
             break
         end
         s_prev = s
-        verbose && Rank() == 0 && i%100 == 0 && println("iteration $i")
+        verbose && Rank() == 0 && i%100 == 0 && println("iteration $i: $s")
     end
     verbose && Rank() == 0 && println("done computing max singular value: $s")
     s

@@ -1,0 +1,12 @@
+#!/bin/sh
+#$ -cwd
+#$ -N pet-l1
+#$ -pe mpi 720
+#$ -j y
+date
+module load mpi/openmpi-x86_64
+export DATA=$1
+export REG=$2
+. /shared/julia_setup.sh
+export OMP_NUM_THREADS=1
+mpirun -np 720 julia --project=/shared/julia_pkgs/dev/DistStat/examples /shared/julia_pkgs/dev/DistStat/examples/pet-l1.jl --data=$DATA --reg=$REG
