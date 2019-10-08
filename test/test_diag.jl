@@ -3,8 +3,8 @@ using DistStat
 using LinearAlgebra
 
 if haskey(Pkg.installed(), "CuArrays")
-    #using CuArrays
-    ArrayType = Array
+    using CuArrays
+    ArrayType = CuArray
 else
     ArrayType = Array
 end
