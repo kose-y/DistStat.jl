@@ -11,15 +11,14 @@ end
 for T in type
     test1=[1.0 1.0 1.0; -1.0 0.0 2.0; 0.0 1.0 3.0]
     test2=[1.0 2.0 3.0; -1.0 0.0 1.0; 2.0 0.0 1.0]
-    test1_conv=ArrayType{T}(test1); test1_dist=distribute(test1_conv)
-    test2_conv=ArrayType{T}(test2); test2_dist=distribute(test2_conv)
+    test1_conv=ArrayType{T}(test1); test2_conv=ArrayType{T}(test2)
     answer1=Array{T}(undef,3,3); answer2=Array{T}(undef,3,3)
-    r1=MPIArray{T,2,ArrayType}(undef, 3, 3); r2=MPIArray{T,2,ArrayType}(undef,3,3)
+    r1=ArrayType{T}(undef, 3, 3); r2=ArrayType{T}(undef,3,3)
 
     for i in 1:3
         for j in 1:3
-            answer1=sqrt(sum((test1[:,i]-test1[:,j]).^2))
-            answer2=sqrt(sum((test1[:,i]-test2[:,j]).^2))
+            answer1[i,j]=sqrt(sum((test1[:,i]-test1[:,j]).^2))
+            answer2[i,j]=sqrt(sum((test1[:,i]-test2[:,j]).^2))
         end
     end
     answer1=ArrayType{T}(answer1)
@@ -54,14 +53,12 @@ for T in type
 
     result=DistStat.euclidean_distance!(r,test_dist)
 
-    @test isapprox(answer,result.localarray)
+    @test isapprox(answer[:,cols],result.localarray[:,cols])
 
     zero2=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     @test isapprox(result.localarray[diagind(result.localarray)],zero2)
 
     @test all(result.localarray .>= 0)
-
-    @test isapprox(answer[:,cols],result.localarray[:,cols])
 
 end
