@@ -1,11 +1,11 @@
-using Test, CuArrays, DistStat, LinearAlgebra, Pkg
-type=[Float64, Float32]
+using DistStat, Test, CuArrays, LinearAlgebra
+type=[Float64,Float32]
 
-if haskey(Pkg.installed(),"CuArrays")
+if haskey(Pkg.installed(), "CuArrays")
     using CuArrays
-    ArrayType=CuArray
+    ArrayType = CuArray
 else
-    ArrayType=Array
+    ArrayType = Array
 end
 
 for T in type

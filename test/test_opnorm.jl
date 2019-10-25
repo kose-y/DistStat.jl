@@ -1,7 +1,13 @@
 using DistStat, LinearAlgebra,Random,Test
 
-type=[Float64,Float32]
-A=Array
+types=[Float64,Float32]
+if haskey(Pkg.installed(), "CuArrays")
+    using CuArrays
+    ArrayType = CuArray
+else
+    ArrayType = Array
+end
+
 
 for T in type
     a=rand(7,7)
