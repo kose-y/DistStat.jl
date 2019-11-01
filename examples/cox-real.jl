@@ -40,7 +40,7 @@ mutable struct COXVariables{T, A}
         fill!(β, zero(T))
         fill!(β_prev, zero(T))
 
-        δ = convert(Vector{T}, δ)
+        δ = convert(A{T}, δ)
 
         π_ind = MPIMatrix{T,A}(undef, m, m)
         t_dist = distribute(reshape(t, 1, :))
@@ -78,6 +78,7 @@ function update!(X::MPIArray, u::COXUpdate, v::COXVariables{T,A}) where {T,A}
     grad = mul!(v.tmp_n, transpose(X), v.tmp_m_local2) # {[n]} = {[n] x m} * {m}. 
     v.β .= v.β .+ v.σ .* grad  # {[n]}.
     if DistStat.Rank() == DistStat.Size() - 1
+        # we can accept λ as a vector and remove this if-else block
         v.β.localarray[1:end-11] .= soft_threshold.(v.β.localarray[1:end-11], v.λ)
     else
         v.β.localarray .= soft_threshold.(v.β.localarray, v.λ) # {[n]}.
