@@ -10,7 +10,7 @@ else
 end
 
 for T in type
-    a = Array{T}(reshape(collect(1:49),7,7))
+    a = A{T}(reshape(collect(1:49),7,7))
     a_dist = distribute(a)
     cols=a_dist.partitioning[DistStat.Rank()+1][2]
 

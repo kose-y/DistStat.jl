@@ -10,7 +10,7 @@ end
 
 
 for T in type
-    a=Array{T}(reshape(collect(1:81),9,9))
+    a=A{T}(reshape(collect(1:81),9,9))
     a_dist=distribute(a)
 
     println(@test isapprox(opnorm(a),opnorm(a_dist)))
