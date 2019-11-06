@@ -1,4 +1,4 @@
-using DistStat, Test, CuArrays, LinearAlgebra
+using DistStat, Test, CuArrays, LinearAlgebra, Pkg
 type=[Float64,Float32]
 
 if haskey(Pkg.installed(), "CuArrays")
@@ -36,8 +36,7 @@ for T in type
     @test all(result1 .>= 0)
     @test all(result2 .>= 0)
 
-    data=randn(49)
-    test=reshape(data,7,7)
+    test=reshape(collect(-24:24),7,7)
     test_conv=ArrayType{T}(test)
     test_dist=distribute(test_conv)
     cols=test_dist.partitioning[DistStat.Rank()+1][2]
@@ -53,12 +52,12 @@ for T in type
 
     result=DistStat.euclidean_distance!(r,test_dist)
 
-    @test isapprox(answer[:,cols],result.localarray[:,cols])
+    @test isapprox(answer[:,cols],result.localarray)
 
     zero2=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-    @test isapprox(result.localarray[diagind(result.localarray)],zero2)
+    @test isapprox(answer[diagind(answer)],zero2)
 
-    @test all(result.localarray .>= 0)
+    @test all(result.localarray .>= 0.0)
 
 end
