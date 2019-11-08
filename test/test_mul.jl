@@ -55,12 +55,13 @@ for T in type
     LinearAlgebra.mul!(transpose(w4),transpose(X_dist),transpose(y))
     @test isapprox(result4[:,cols1],w4.localarray)
 
-    v1 = Array{T}(reshape(collect(1:6),6))
+    v1 = Array{Float64}(reshape(collect(1:6),6))
     v1_dist=distribute(v1)
-    v2 = Array{T}(reshape(collect(1:5),5))
+    v2 = Array{Float64}(reshape(collect(1:5),5))
     v2_dist=distribute(v2)
-    lv1 = Array{T}(undef, 6)
-    lv2 = Array{T}(undef, 5)
+    lv1 = Array{Float64}(undef, 6)
+    lv2 = Array{Float64}(undef, 5)
+    lv2=distribute(lv2)
 
     ans1=LinearAlgebra.mul!(lv1,X_dist,v2)
     ans2=LinearAlgebra.mul!(lv1,X_dist,v2_dist)
@@ -70,6 +71,6 @@ for T in type
     ans3=LinearAlgebra.mul!(lv2,transpose(X_dist),v1)
     ans4=LinearAlgebra.mul!(lv2,transpose(X_dist),v1_dist)
 
-    @test isapprox(ans3, ans4)
+    @test isapprox(ans3.localarray,ans4.localarray)
 
 end
