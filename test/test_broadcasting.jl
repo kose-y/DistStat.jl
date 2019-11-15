@@ -10,7 +10,7 @@ else
 end
 
 for T in type
-    x=zeros(T,5,13); x_dist=distribute(x)
+    x=A(zeros(T,5,13)); x_dist=distribute(x)
     cols=x_dist.partitioning[DistStat.Rank()+1][2]
 
     y=A{T}(reshape(collect(-6:6),1,13))
