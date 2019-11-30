@@ -3,7 +3,7 @@ The DistStat.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2019 Seyoon Ko.
 
-> Copyright (c) 2018: Bart Janssens (for `src/distarray.jl`, mainly from the package `MPIArrays.jl`).
+> Copyright (c) 2018: Bart Janssens (for `src/distarray.jl`, modified from the package `MPIArrays.jl`).
 >
 > Permission is hereby granted, free of charge, to any person obtaining a copy
 > of this software and associated documentation files (the "Software"), to deal
