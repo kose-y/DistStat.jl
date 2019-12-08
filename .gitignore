@@ -7,3 +7,4 @@ examples/rslts
 core.*
 Manifest.toml
 */Manifest.toml
+docs/build/

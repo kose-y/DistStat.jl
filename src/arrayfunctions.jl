@@ -14,7 +14,7 @@ distributes a dense array.
 function distribute(a::AbstractArray{T,N}; root=0, A=nothing) where {T, N}
     if A == nothing
         TA = typeof(a)
-        A = hasproperty(TA, :name) ? TA.name.wrapper : a
+        A = hasproperty(TA, :name) ? TA.name.wrapper : TA
     end
     reqs = MPI.Request[]
     size_a = MPI.bcast(size(a), root, MPI.COMM_WORLD)
