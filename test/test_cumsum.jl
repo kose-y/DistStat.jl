@@ -2,7 +2,7 @@ using DistStat, Pkg, Random, Test
 
 type=[Float64,Float32]
 
-if haskey(Pkg.installed(), "CuArrays")
+if get(ENV,"JULIA_MPI_TEST_ARRAYTYPE","") == "CuArray"
     using CuArrays
     A = CuArray
 else
@@ -14,7 +14,7 @@ for T in type
     a_dist = distribute(a)
     cols=a_dist.partitioning[DistStat.Rank()+1][2]
 
-    println(@test cumsum(a,dims=1)[:,cols]==cumsum(a_dist,dims=1).localarray)
-    println(@test cumsum(a,dims=2)[:,cols]==cumsum(a_dist,dims=2).localarray)
+    @test cumsum(a,dims=1)[:,cols]==cumsum(a_dist,dims=1).localarray
+    @test cumsum(a,dims=2)[:,cols]==cumsum(a_dist,dims=2).localarray
 
 end

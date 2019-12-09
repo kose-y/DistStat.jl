@@ -1,7 +1,7 @@
-using DistStat, Test, CuArrays, LinearAlgebra, Pkg
+using DistStat, Test, LinearAlgebra, Pkg
 type=[Float64,Float32]
 
-if haskey(Pkg.installed(), "CuArrays")
+if get(ENV,"JULIA_MPI_TEST_ARRAYTYPE","") == "CuArray"
     using CuArrays
     ArrayType = CuArray
 else

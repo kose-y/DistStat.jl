@@ -1,7 +1,8 @@
 using DistStat, LinearAlgebra,Random,Test, Pkg
 
 type=[Float64,Float32]
-if haskey(Pkg.installed(), "CuArrays")
+
+if get(ENV,"JULIA_MPI_TEST_ARRAYTYPE","") == "CuArray"
     using CuArrays
     A= CuArray
 else
@@ -13,6 +14,6 @@ for T in type
     a=A{T}(reshape(collect(1:81),9,9))
     a_dist=distribute(a)
 
-    println(@test isapprox(opnorm(a),opnorm(a_dist)))
+    @test isapprox(opnorm(a),opnorm(a_dist))
 
 end

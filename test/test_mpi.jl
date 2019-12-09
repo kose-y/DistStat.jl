@@ -3,7 +3,7 @@ MPI.Init()
 
 type=[Float64,Float32]
 
-if haskey(Pkg.installed(), "CuArrays")
+if get(ENV,"JULIA_MPI_TEST_ARRAYTYPE","") == "CuArray"
     using CuArrays
     A = CuArray
 else
@@ -13,5 +13,5 @@ end
 for T in type
     a=A{T}(reshape(collect(1:100),10,10))
     b = MPI.Allreduce(a, MPI.MIN, MPI.COMM_WORLD)
-    println((@test isapprox(a,b)))
+    @test isapprox(a,b)
 end
