@@ -15,7 +15,7 @@ branches:
     - master
     - /^release-.*/
     - /^v\d+\.\d+(\.\d+)?(-\S*)?$/
-    
+
 notifications:
   email: false
 
