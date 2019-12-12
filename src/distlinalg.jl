@@ -234,6 +234,7 @@ const AbstractSparseOrTranspose{T} = Union{AbstractSparseMatrix{T, <:Integer},Tr
 """
 Sparse matrix-vector multiplications
 """
+#=
 function LinearAlgebra.mul!(C::AbstractVector{T}, A::AbstractSparseOrTranspose{T}, B::MPIColVector{T,AT};
                             tmp::AbstractArray{T}=AT{T}(undef, size(B,1))) where {T,AT}
     @assert length(C) == size(A,1) && length(B) == size(A,2)
@@ -270,7 +271,7 @@ function LinearAlgebra.mul!(C::MPIColVector{T,AT}, A::AbstractSparseOrTranspose{
     localC .= tmp_m[C_mpi.partitioning[Rank()+1][1]]
     C
 end
-
+=#
 """
     LinearAlgebra.dot(A::MPIArray, B::MPIArray)
 
@@ -284,7 +285,7 @@ end
 """
     LinearAlgebra.diagind(M::MPIMatrix, k)
 
-returns indices of the diagonal with respect to M.localarray. 
+returns indices of the diagonal with respect to `M.localarray`. 
 """
 @inline function LinearAlgebra.diagind(M::MPIMatrix, k::Integer=0)
     offset = - (M.partitioning[Rank()+1][2][1]-1) + k
@@ -303,7 +304,7 @@ end
 
 """
     diag!(d::MPIMatrix{T,A}, M::MPIMatrix{T,A})
-returns a distributed row vector. 
+returns a distributed 1-row matrix. 
 """
 function diag!(d::MPIMatrix{T,A}, M::MPIMatrix{T,A}) where {T,A}
     @assert size(d,1) == 1
