@@ -97,28 +97,8 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
         return new{T,N,A}(sizes, localarray, partitioning, comm, rank, local_lengths(partitioning))
     end
     MPIArray{T,N,A}(comm::MPI.Comm, partitions::NTuple{N,<:Integer}, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(comm, distribute.(sizes, partitions)...)
-    MPIArray{T,N,A}(sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(MPI.COMM_WORLD, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
     MPIArray{T,N,A}(::UndefInitializer, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(MPI.COMM_WORLD, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
 
-    function MPIArray{T,N,A}(comm::MPI.Comm, localarray::AbstractArray{T,N}, nb_partitions::Vararg{<:Integer,N}) where {T,N,A}
-        nb_procs = MPI.Comm_size(comm)
-        rank = MPI.Comm_rank(comm)
-        
-        partition_size_array = reshape(MPI.Allgather(size(localarray), comm), Int.(nb_partitions)...)
-
-        partition_sizes = ntuple(N) do dim
-            idx = ntuple(i -> i == dim ? Colon() : 1,N)
-            return getindex.(partition_size_array[idx...],dim)
-        end
-
-        # win = MPI.Win_create(localarray, comm)
-        partitioning = ContinuousPartitioning(partition_sizes...)
-        # result = new{T,N,A}(sum.(partition_sizes), A(localarray), partitioning, comm, win, rank, local_lengths(partitioning))
-        result = new{T,N,A}(sum.(partition_sizes), A(localarray), partitioning, comm, rank, local_lengths(partitioning))
-        return result
-    end
-
-    MPIArray{T,N,A}(localarray::AbstractArray{T,N}, nb_partitions::Vararg{<:Integer,N}) where {T,N,A} = MPIArray(MPI.COMM_WORLD, A(localarray), nb_partitions...)
 end
 
 function MPIArray(comm::MPI.Comm, init::Function, partition_sizes::Vararg{AbstractVector{<:Integer}, N}; T=nothing, A=nothing) where N
@@ -263,25 +243,6 @@ end
 
 Base.filter!(f,a::MPIArray{T,1,A}) where {T,A} = copy_into!(a, filter(f,a))
 
-function redistribute(a::MPIArray{T,N,A}, partition_sizes::Vararg{Any,N}) where {T,N,A}
-    rank = MPI.Comm_rank(a.comm)
-    @assert prod(length.(partition_sizes)) == MPI.Comm_size(a.comm)
-    partitioning = ContinuousPartitioning(partition_sizes...)
-    localarray = getblock(a[partitioning[rank+1]...])
-    return MPIArray(a.comm, localarray, length.(partition_sizes)...)
-end
-
-function redistribute(a::MPIArray{T,N,A}, nb_parts::Vararg{Int,N}) where {T,N,A}
-    return redistribute(a, distribute.(size(a), nb_parts)...)
-end
-
-function redistribute(a::MPIArray)
-    return redistribute(a, size(a.partitioning)...)
-end
-
-redistribute!(a::MPIArray{T,N,A}, partition_sizes::Vararg{Any,N})  where {T,N,A} = copy_into!(a, redistribute(a, partition_sizes...))
-redistribute!(a::MPIArray) = redistribute!(a, size(a.partitioning)...)
-
 """
     localindices(a::MPIArray, rank::Integer)
 Get the local index range (expressed in terms of global indices) of the given rank
@@ -315,18 +276,4 @@ function forlocalpart!(f, As::Vararg{AbstractArray,N}) where N
     return result
 end
 
-function linear_ranges(indexblock)
-    cr = CartesianIndices(axes(indexblock)[2:end])
-    result = Vector{UnitRange{Int}}(undef,length(cr))
 
-    for (i,carti) in enumerate(cr)
-        linrange = indexblock[:,carti]
-        result[i] = linrange[1]:linrange[end]
-    end
-    return result
-end
-
-function free(a::MPIArray{T,N}) where {T,N}
-    sync(a)
-    # MPI.free(a.win)
-end
