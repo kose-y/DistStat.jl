@@ -86,7 +86,7 @@ function update!(u::PETUpdate_l1, v::PETVariables_l1)
     v.tmp_1n_1 .= 2v.lambda .- v.lambda_prev # lambda_tilde
      
     # update z
-    mul!(v.tmp_m_local, v.E, transpose(v.lambda)) # el
+    mul!(v.tmp_m_local, v.E, transpose(v.tmp_1n_1)) # el
     v.z .+= v.sigma .* v.tmp_m_local
     v.tmp_m_local .= sqrt.(v.z.^2 .+ 4v.sigma .* v.y)
     v.z .= (v.z .- v.tmp_m_local)/2one(T)

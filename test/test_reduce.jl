@@ -1,6 +1,6 @@
 using DistStat, Pkg, Test
 
-if haskey(Pkg.installed(), "CuArrays")
+if get(ENV,"JULIA_MPI_TEST_ARRAYTYPE","") == "CuArray"
     using CuArrays
     A = CuArray
 else
