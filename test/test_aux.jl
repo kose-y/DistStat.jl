@@ -2,7 +2,7 @@ using DistStat, Random, Test, Pkg
 
 type=[Float32,Float64]
 
-if haskey(Pkg.installed(), "CuArrays")
+if get(ENV,"JULIA_MPI_TEST_ARRAYTYPE","") == "CuArray"
     using CuArrays
     ArrayType = CuArray
 else
@@ -25,10 +25,12 @@ for T in type
   println(@test isapprox(B_dist.localarray,B[:,cols2]))
 
   C_dist = MPIArray{T, 2, ArrayType}(undef, 7, 9)
+  cols3=C_dist.partitioning[DistStat.Rank()+1][2]
+  randn!(C_dist; seed=0,common_init=true)
 
-  C_dist1=randn!(C_dist; seed=0)
-  C_dist2=randn!(C_dist; seed=0, common_init=true)
-
-  println(@test C_dist1==C_dist2)
+  C=ArrayType{T}(undef,size(C_dist))
+  Random.seed!(0)
+  randn!(C)
+  println(@test isapprox(C_dist.localarray,C[:,cols3]))
 
 end
