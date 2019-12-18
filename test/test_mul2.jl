@@ -29,9 +29,4 @@ for T in type
     result2=LinearAlgebra.mul!(transpose(C),transpose(A_dist),B)
     println(@test isapprox(result2.localarray,ArrayType{T}(transpose(ans1))[:,cols1]))
 
-    D=Vector{Float64}(reshape()
-    E=Vector{Float64}(undef,9)
-    LinearAlgebra.mul!(E,transpose(A_dist),D)
-    println(@test isapprox(E,transpose(A)*D)
-
 end
