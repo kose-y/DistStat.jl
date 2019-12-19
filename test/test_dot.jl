@@ -15,10 +15,10 @@ for T in type
 
     A_dist=distribute(A); B_dist=distribute(B)
 
-    println(@test isapprox(LinearAlgebra.dot(A_dist,B_dist),LinearAlgebra.dot(A,B)))
+    @test isapprox(LinearAlgebra.dot(A_dist,B_dist),LinearAlgebra.dot(A,B))
 
     A_vec=vec(A); B_vec=vec(B)
 
-    println(@test isapprox(LinearAlgebra.dot(A_dist,B_dist),LinearAlgebra.dot(A_vec,B_vec)))
+    @test isapprox(LinearAlgebra.dot(A_dist,B_dist),LinearAlgebra.dot(A_vec,B_vec))
 
 end

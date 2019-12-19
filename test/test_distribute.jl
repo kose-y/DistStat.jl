@@ -17,7 +17,7 @@ for T in type
  cols1=data_dist1.partitioning[DistStat.Rank()+1][2]
  cols2=data_dist2.partitioning[DistStat.Rank()+1][2]
 
- println(@test data_dist1.localarray==data[:,cols1])
- println(@test data_dist2.localarray==(ArrayType{T}(transpose(data)))[:,cols2])
+ @test data_dist1.localarray==data[:,cols1]
+ @test data_dist2.localarray==(ArrayType{T}(transpose(data)))[:,cols2]
 
 end

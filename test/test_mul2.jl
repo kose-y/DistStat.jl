@@ -24,9 +24,16 @@ for T in type
     result1=LinearAlgebra.mul!(C,transpose(A),B_dist)
     ans1=transpose(A)*B
 
-    println(@test isapprox(result1.localarray,ans1[:,cols1]))
+    @test isapprox(result1.localarray, ans1[:,cols1])
 
     result2=LinearAlgebra.mul!(transpose(C),transpose(A_dist),B)
-    println(@test isapprox(result2.localarray,ArrayType{T}(transpose(ans1))[:,cols1]))
+    @test isapprox(result2.localarray, ArrayType{T}(transpose(ans1))[:,cols1])
+
+
+    B_vec = ArrayType{T}(collect(1:7))
+    C_vec = ArrayType{T}(undef, 9)
+    LinearAlgebra.mul!(C_vec, transpose(A_dist), B_vec)
+    C_true = transpose(A) * B_vec
+    @test isapprox(C_vec, C_true)
 
 end

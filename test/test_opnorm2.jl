@@ -13,8 +13,8 @@ for T in type
     A=ArrayType{T}(reshape(collect(1:45),5,9))
     A_dist=distribute(A)
 
-    println(@test isapprox(opnorm(A_dist,1),opnorm(A,1)))
-    println(@test isapprox(opnorm(A_dist,2),opnorm(A,2)))
-    println(@test isapprox(opnorm(A_dist,Inf),opnorm(A,Inf)))
+    @test isapprox(opnorm(A_dist,1),opnorm(A,1))
+    @test isapprox(opnorm(A_dist,2),opnorm(A,2))
+    @test isapprox(opnorm(A_dist,Inf),opnorm(A,Inf))
 
 end
