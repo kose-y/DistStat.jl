@@ -174,7 +174,7 @@ end
 function LinearAlgebra.mul!(C::AbstractVector{T}, A::Transpose{T, MPIMatrix{T,AT}}, B::AbstractVector{T}) where {T,AT}
     localA = get_local(A)
     fill!(C, zero(T))
-    LinearAlgebra.mul!(C[transpose(A).partitioning[Rank()+1][2]], localA, B[transpose(A).partitioning[Rank()+1][1]])
+    LinearAlgebra.mul!(@view(C[transpose(A).partitioning[Rank()+1][2]]), localA, B[transpose(A).partitioning[Rank()+1][1]])
     sync()
     Allreduce!(C)
     C
