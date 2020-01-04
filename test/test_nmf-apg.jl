@@ -31,9 +31,9 @@ function nmf!(X::MPIArray, u::APGUpdate, v::NMFVariables)
 end
 
 variables=parse_commandline_nmf()
-m = variables["rows"]
-n = variables["cols"]
-r = variables["r"]
+m = 10
+n = 10
+r = 4
 interval = variables["step"]
 init_opt = variables["init_from_master"]
 seed = variables["seed"]
@@ -43,8 +43,8 @@ for T in type
     X=MPIMatrix{T,A}(undef,m,n)
     rand!(X; common_init=init_opt, seed=0)
 
-    iter1=variables["iter"]
-    iter2=variables["iter"]+200
+    iter1=10000
+    iter2=11000
 
     u1 = APGUpdate(;maxiter=iter1, step=interval, verbose=true)
     u2 = APGUpdate(;maxiter=iter2, step=interval, verbose=true)
@@ -54,7 +54,7 @@ for T in type
 
     result1=nmf!(X,u1,v)
     result2=nmf!(X,u2,v)
-    tol=2e-03
+    tol=1e-08
 
     @test abs(result1[1]-result2[1])<tol
     @test abs(result1[2]-result2[2])<tol

@@ -31,8 +31,8 @@ function cox!(X::MPIArray, u::COXUpdate, v::COXVariables)
 end
 
 variables = parse_commandline_cox()
-m = variables["rows"]
-n = variables["cols"]
+m = 10
+n = 10
 interval = variables["step"]
 init_opt = variables["init_from_master"]
 seed = variables["seed"]
@@ -46,8 +46,8 @@ for T in type
     δ = convert(A{T}, rand(m) .> censor_rate)
     DistStat.Bcast!(δ)
 
-    iter1=variables["iter"]
-    iter2=variables["iter"]+100
+    iter1=40000
+    iter2=41000
 
     u1 = COXUpdate(;maxiter=iter1, step=interval, verbose=true)
     u2 = COXUpdate(;maxiter=iter2, step=interval, verbose=true)
@@ -58,12 +58,9 @@ for T in type
 
     result1=cox!(X,u1,v)
     result2=cox!(X,u2,v)
-    tol1=1e-05
-    tol2=1e-06
+    tol=5e-04
 
-    @test result1[1]<tol1
-    @test result2[1]<tol1
-
-    @test abs(result1[1]-result2[1])<tol2
+    @test abs(result1[1]-result2[1])<tol
+    @test isapprox(result1[2],result2[2])
 
 end
