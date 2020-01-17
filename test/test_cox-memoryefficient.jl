@@ -12,28 +12,10 @@ type=[Float64,Float32]
 include("cox-memoryefficient_fun.jl")
 include("cmdline.jl")
 
-function loop!(X::MPIArray, u, iterfun, evalfun, args...)
-    converged = false
-    t = 0
-    result=nothing
-    while !converged && t < u.maxiter
-        t += 1
-        iterfun(X, u, args...)
-        if t % u.step == 0
-            converged, result = evalfun(X, u, args...)
-        end
-    end
-    return result
-end
-
-function cox!(X::MPIArray, u::COXUpdate, v::COXVariables)
-    loop!(X, u, cox_one_iter!, get_objective!, v)
-end
-
 variables = parse_commandline_cox()
 m = 10
 n = 10
-init_opt = variables["init_from_master"]
+init_opt = true
 seed = variables["seed"]
 eval_obj = variables["eval_obj"]
 censor_rate = variables["censor_rate"]
@@ -54,15 +36,9 @@ for T in type
     reset!(v; seed=seed)
 
     result=cox!(X,u,v)
+    ans=(0.016952382618763417,10.0)
 
-    if T == Float64
-        ans=(0.03986660978990375,10.0)
-        @test isapprox(ans[1],result[1])
-        @test isapprox(ans[2],result[2])
-    else
-        ans=(0.012321144,10.0)
-        @test isapprox(ans[1],result[1])
-        @test isapprox(ans[2],result[2])
-    end
+    @test isapprox(ans[1],result[1])
+    @test isapprox(ans[2],result[2])
 
 end
