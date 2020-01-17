@@ -14,7 +14,6 @@ include("cmdline.jl")
 
 variables = parse_commandline_pet_l2()
 
-interval = variables["step"]
 SA = SparseMatrixCSC
 if variables["gpu"]
     using CuArrays
@@ -24,9 +23,7 @@ end
 
 eval_obj = variables["eval_obj"]
 datafile = variables["data"]
-rho = variables["reg"]
-sigma = variables["sigma"]
-tau   = variables["tau"]
+mu = variables["reg"]
 dat = npzread(datafile)
 
 for T in type
@@ -62,18 +59,15 @@ for T in type
     DistStat.Bcast!(y)
     G, D = MPI.bcast((G, D), 0, MPI.COMM_WORLD)
 
-    iter1=2000;iter2=2100
+    iter=15; interval=1
 
-    u1 = PETUpdate_l2(;maxiter=iter1, step=interval, verbose=true)
-    u2 = PETUpdate_l2(;maxiter=iter2, step=interval, verbose=true)
+    u = PETUpdate_l2(;maxiter=iter, step=interval, verbose=true)
     v = PETVariables_l2(y, E, G, D, mu; eval_obj=eval_obj)
     reset!(v)
 
-    result1=pet_l2!(u1, v)
-    result2=pet_l2!(u2, v)
+    ans=7.146081552445253
+    result=pet_l2!(u, v)
 
-    tol=3e-02
-
-    @test abs(result1-result2)<tol
+    @test isapprox(ans,result)
 
 end

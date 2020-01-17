@@ -103,7 +103,7 @@ end
 function loop!(Y::MPIArray, u, iterfun, evalfun, args...)
     converged = false
     t = 0
-    result=nothing
+    result = nothing
     while !converged && t < u.maxiter
         t += 1
         iterfun(Y, u, args...)

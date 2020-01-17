@@ -105,16 +105,15 @@ end
 function loop!(X::MPIArray, u, iterfun, evalfun, args...)
     converged = false
     t = 0
+    result=nothing
     while !converged && t < u.maxiter
         t += 1
         iterfun(X, u, args...)
         if t % u.step == 0
-            converged, monitor = evalfun(X, u, args...)
-            if DistStat.Rank() == 0
-                println(t, ' ', monitor)
-            end
+            converged, result = evalfun(X, u, args...)
         end
     end
+    return result
 end
 
 function nmf!(X::MPIArray, u::APGUpdate, v::NMFVariables)

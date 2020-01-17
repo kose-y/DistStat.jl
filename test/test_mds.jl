@@ -12,40 +12,28 @@ type=[Float64,Float32]
 include("mds_fun.jl")
 include("cmdline.jl")
 
-variables = parse_commandline_mds()
-
 m = 10
 n = 10
 r = 4
-interval = variables["step"]
-init_opt = variables["init_from_master"]
-seed = variables["seed"]
-eval_obj = variables["eval_obj"]
+init_opt = true
+seed = 777
+eval_obj = true
 
 for T in type
-    X1=MPIMatrix{T, A}(undef, m, n)
-    rand!(X1; common_init=init_opt, seed=0)
-    Y1=MPIMatrix{T, A}(undef, n, n)
-    DistStat.euclidean_distance!(Y1, X1)
+    X=MPIMatrix{T, A}(undef, m, n)
+    rand!(X; common_init=init_opt, seed=0)
+    Y=MPIMatrix{T, A}(undef, n, n)
+    DistStat.euclidean_distance!(Y, X)
 
-    X2=MPIMatrix{T,A}(undef,m,n)
-    rand!(X2; common_init=init_opt, seed=0)
-    Y2=MPIMatrix{T,A}(undef,n,n)
-    DistStat.euclidean_distance!(Y2, X2)
+    iter=15; interval=1
 
-    iter1=1000; iter2=1100
-    u1 = MDSUpdate(;maxiter=iter1, step=interval, verbose=true)
-    u2 = MDSUpdate(;maxiter=iter2, step=interval, verbose=true)
-    v1 = MDSVariables(Y1, r; eval_obj=eval_obj, seed=seed)
-    v2 = MDSVariables(Y1, r; eval_obj=eval_obj, seed=seed)
-    reset!(v1; seed=seed)
-    reset!(v2; seed=seed)
+    u = MDSUpdate(;maxiter=iter, step=interval, verbose=true)
+    v = MDSVariables(Y, r; eval_obj=eval_obj, seed=seed)
+    reset!(v; seed=seed)
 
-    tol=1e-06
+    ans=3.646210055153943
+    result=mds!(Y,u,v)
 
-    result1=mds!(Y1,u1,v1)
-    result2=mds!(Y2,u2,v2)
-
-    @test abs(result1-result2)<tol
+    @test isapprox(ans,result)
 
 end

@@ -68,7 +68,7 @@ mutable struct PETVariables_l1{T,A}
     end
 end
 
-function reset!(v::PETVariables_l1)
+function reset!(v::PETVariables_l1{T, A}) where {T, A<:AbstractArray}
     fill!(v.lambda, one(T))
     fill!(v.lambda_prev, one(T))
     fill!(v.z, -one(T))
@@ -76,10 +76,10 @@ function reset!(v::PETVariables_l1)
 end
 
 
-function update!(u::PETUpdate_l1, v::PETVariables_l1)
-    mul!(v.tmp_n, transpose(E), v.z) # Etz
+function update!(u::PETUpdate_l1, v::PETVariables_l1{T,A}) where {T,A<:AbstractArray}
+    mul!(v.tmp_n, transpose(v.E), v.z) # Etz
     v.tmp_1n_1.localarray .= transpose(v.tmp_n.localarray)
-    mul!(transpose(v.tmp_1n_2), transpose(D), v.w) # Dtw
+    mul!(transpose(v.tmp_1n_2), transpose(v.D), v.w) # Dtw
 
     # update lambda
     v.lambda .= max.(v.lambda .- v.tau .* (v.tmp_1n_1 .+ v.tmp_1n_2 .+ v.Et1), zero(T))
@@ -111,7 +111,7 @@ function get_objective!(::Nothing, u::PETUpdate_l1, v::PETVariables_l1)
     end
 end
 
-function pet_l1_one_iter!(::Nothing, u::PETUpdate_l1, v::PETVariables_l1)
+function pet_l1_one_iter!(::Nothing, u::PETUpdate_l1, v::PETVariables_l1{T,A}) where {T, A<:AbstractArray}
     copyto!(v.lambda_prev, v.lambda)
     update!(u, v)
 end
@@ -130,6 +130,6 @@ function loop!(Y, u, iterfun, evalfun, args...)
     return result
 end
 
-function pet_l1!(u::PETUpdate_l1, v::PETVariables_l1)
+function pet_l1!(u::PETUpdate_l1, v::PETVariables_l1{T,A}) where {T,A<:AbstractArray}
     loop!(nothing, u, pet_l1_one_iter!, get_objective!, v)
 end

@@ -64,13 +64,13 @@ mutable struct PETVariables_l2{T,A}
     end
 end
 
-function reset!(v::PETVariables_l2)
+function reset!(v::PETVariables_l2{T,A}) where {T, A<:AbstractArray}
     fill!(v.lambda, one(T))
     fill!(v.lambda_prev, one(T))
 end
 
 
-function update!(u::PETUpdate_l2, v::PETVariables_l2)
+function update!(u::PETUpdate_l2, v::PETVariables_l2{T,A}) where {T, A<:AbstractArray}
     el = mul!(v.tmp_m_local, v.E, transpose(v.lambda))
     mul!(transpose(v.tmp_1n_1), v.G, transpose(v.lambda)) # gl
     v.tmp_mn .= v.E .* v.y .* v.lambda ./ (el .+ v.eps) # z,
@@ -84,7 +84,7 @@ function update!(u::PETUpdate_l2, v::PETVariables_l2)
     end
 end
 
-function get_objective!(::Nothing, u::PETUpdate_l2, v::PETVariables_l2)
+function get_objective!(::Nothing, u::PETUpdate_l2, v::PETVariables_l2{T,A}) where {T, A<:AbstractArray}
     if v.eval_obj
         el = mul!(v.tmp_m_local, v.E, transpose(v.lambda))
         v.tmp_m_local .= v.y .* log.(el .+ v.eps) .- el
@@ -99,7 +99,7 @@ function get_objective!(::Nothing, u::PETUpdate_l2, v::PETVariables_l2)
     end
 end
 
-function pet_l2_one_iter!(::Nothing, u::PETUpdate_l2, v::PETVariables_l2)
+function pet_l2_one_iter!(::Nothing, u::PETUpdate_l2, v::PETVariables_l2{T,A}) where {T,A<:AbstractArray}
     copyto!(v.lambda_prev, v.lambda)
     update!(u, v)
 end
@@ -118,6 +118,6 @@ function loop!(Y, u, iterfun, evalfun, args...)
     return result
 end
 
-function pet_l2!(u::PETUpdate_l2, v::PETVariables_l2)
+function pet_l2!(u::PETUpdate_l2, v::PETVariables_l2{T,A}) where {T, A<:AbstractArray}
     loop!(nothing, u, pet_l2_one_iter!, get_objective!, v)
 end
