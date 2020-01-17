@@ -33,7 +33,6 @@ end
 variables = parse_commandline_cox()
 m = 10
 n = 10
-interval = variables["step"]
 init_opt = variables["init_from_master"]
 seed = variables["seed"]
 eval_obj = variables["eval_obj"]
@@ -46,21 +45,24 @@ for T in type
     δ = convert(A{T}, rand(m) .> censor_rate)
     DistStat.Bcast!(δ)
 
-    iter1=40000
-    iter2=41000
+    iter=20; interval=1
 
-    u1 = COXUpdate(;maxiter=iter1, step=interval, verbose=true)
-    u2 = COXUpdate(;maxiter=iter2, step=interval, verbose=true)
+    u = COXUpdate(;maxiter=iter, step=interval, verbose=true)
     t = convert(A{T}, collect(reverse(1:size(X,1))))
     v = COXVariables(X, δ, lambda, t; eval_obj=eval_obj)
 
     reset!(v; seed=seed)
 
-    result1=cox!(X,u1,v)
-    result2=cox!(X,u2,v)
-    tol=5e-04
+    result=cox!(X,u,v)
 
-    @test abs(result1[1]-result2[1])<tol
-    @test isapprox(result1[2],result2[2])
+    if T == Float64
+        ans=(0.03986660978990375,10.0)
+        @test isapprox(ans[1],result[1])
+        @test isapprox(ans[2],result[2])
+    else
+        ans=(0.012321144,10.0)
+        @test isapprox(ans[1],result[1])
+        @test isapprox(ans[2],result[2])
+    end
 
 end
