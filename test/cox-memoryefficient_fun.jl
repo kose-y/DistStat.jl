@@ -162,7 +162,7 @@ function loop!(X::MPIArray, u, iterfun, evalfun, args...)
             converged, result = evalfun(X, u, args...)
         end
     end
-    println(result)
+    return result
 end
 
 function cox!(X::MPIArray, u::COXUpdate, v::COXVariables)
