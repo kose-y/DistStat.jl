@@ -37,9 +37,9 @@ for (fname, _fname, fname!, mpiop) in [(:sum, :_sum, :sum!, :(MPI.SUM)), (:prod,
         end
 
         ($_fname)(f::Function, a::MPIArray{T,N,A}, dims::Integer) where {T,N,A} = ($_fname)(f, a, (dims,))
-        @inline ($fname)(f::Function, a::MPIArray{T,N,A}; dims=:) where {T,N,A} = ($_fname)(f, a, dims)
+        ($fname)(f::Function, a::MPIArray{T,N,A}; dims=:) where {T,N,A} = ($_fname)(f, a, dims)
         ($_fname)(a::MPIArray{T,N,A}, ::Colon) where {T,N,A} = ($_fname)(identity, a, :)
         ($_fname)(a::MPIArray{T,N,A}, dims::Integer) where {T,N,A} = ($_fname)(a, (dims,))
-        @inline ($fname)(a::MPIArray{T,N,A}; dims=:) where {T,N,A} = ($_fname)(a, dims)
+        ($fname)(a::MPIArray{T,N,A}; dims=:) where {T,N,A} = ($_fname)(a, dims)
     end
 end

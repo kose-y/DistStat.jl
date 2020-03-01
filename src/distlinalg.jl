@@ -397,5 +397,7 @@ function _opnorm_power(A::MPIMatrix{T,AT}; tol=1e-6, maxiter=1000, seed=777, ver
 end
 
 function _opnorm_quick(A::MPIMatrix)
-    _opnorm_l1(A) * _opnorm_linfty(A)
+    l1 = _opnorm_l1(A)
+    linf = _opnorm_linfty(A)
+    l1*linf
 end

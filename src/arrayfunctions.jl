@@ -4,7 +4,8 @@ import Adapt: adapt
 export distribute
 
 function fill!(a::MPIArray, x)
-    forlocalpart!(y -> fill!(y, x), a) 
+    forlocalpart!(y -> fill!(y, x), a)
+    a
 end
 
 """
@@ -75,6 +76,7 @@ for (fname!, fname) in [(:rand!, :rand), (:randn!, :randn)]
             end
             if !common_init
                 forlocalpart!(y -> $fname!(y), a)
+                a
             else
                 tmp = MPIArray{Float64, N, Array}(undef, size(a)...)
                 if Rank() == root
@@ -86,7 +88,6 @@ for (fname!, fname) in [(:rand!, :rand), (:randn!, :randn)]
                 forlocalpart!(tmp, a) do x, y
                     y .= adapt(A{T}, x)
                 end
-
                 a
             end
         end

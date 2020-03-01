@@ -19,6 +19,7 @@ end
 @inline function Size()
     MPI.Comm_size(COMM_WORLD)
 end
+
 @inline function Rank()
     MPI.Comm_rank(COMM_WORLD)
 end
@@ -30,7 +31,6 @@ include("reduce.jl")
 include("accumulate.jl")
 include("broadcast.jl")
 include("arrayfunctions.jl")
-
 include("utils.jl")
 
 end # module
