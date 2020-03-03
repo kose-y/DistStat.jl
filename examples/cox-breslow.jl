@@ -1,5 +1,6 @@
 using DistStat, Random, LinearAlgebra
 
+
 mutable struct COXUpdate
     maxiter::Int
     step::Int
@@ -25,6 +26,7 @@ function breslow_ind(x::AbstractVector)
 end
 
 mutable struct COXVariables{T, A}
+    # COX variables corresponding to an m × [n] data matrix X (external). m: number of subjects, n: number of predictors
     m::Int # rows, number of subjects
     n::Int # cols, number of predictors
     β::MPIVector{T,A} # [n]
@@ -34,32 +36,38 @@ mutable struct COXVariables{T, A}
     t::AbstractVector{T} # a vector containing timestamps, should be in descending order. 
     breslow::A
     σ::T # step size. 1/(2 * opnorm(X)^2) for guaranteed convergence
-    grad::MPIVector{T,A}
-    w::A
-    W::A
-    W_dist::MPIMatrix{T,A}
-    q::A # (1-π)δ, distributed
+    π_ind::MPIMatrix{T,A}
+    tmp_n::MPIVector{T,A}
+    tmp_1m::MPIMatrix{T,A}
+    tmp_mm::MPIMatrix{T,A}
+    tmp_m_local1::A
+    tmp_m_local2::A
     eval_obj::Bool
     function COXVariables(X::MPIMatrix{T,A}, δ::A, λ::AbstractFloat,
-                        t::A;
-                        σ::T=convert(T, 1/(2*opnorm(X; verbose=true)^2)), 
-                        eval_obj=false) where {T,A} 
+                            t::A;
+                            σ::T=convert(T, 1/(2*opnorm(X; verbose=true)^2)), 
+                            eval_obj=false) where {T,A}
         m, n = size(X)
         β = MPIVector{T,A}(undef, n)
         β_prev = MPIVector{T,A}(undef, n)
         fill!(β, zero(T))
         fill!(β_prev, zero(T))
 
-        δ = convert(A{T}, δ)
+        δ = convert(Vector{T}, δ)
         breslow = convert(A{Int}, breslow_ind(convert(Array, t)))
 
-        grad = MPIVector{T,A}(undef, n)
-        w = A{T}(undef, m)
-        W = A{T}(undef, m)
-        W_dist = MPIMatrix{T,A}(undef, 1, m)
-        q = A{T}(undef, m)
+        π_ind = MPIMatrix{T,A}(undef, m, m)
+        t_dist = distribute(reshape(t, 1, :))
+        fill!(π_ind, one(T))
+        π_ind .= ((π_ind .* t_dist) .- t) .<= 0
 
-        new{T,A}(m, n, β, β_prev, δ, λ, t, breslow, σ, grad, w, W, W_dist, q, eval_obj)
+        tmp_n = MPIVector{T,A}(undef, n)
+        tmp_1m = MPIMatrix{T,A}(undef, 1, m)
+        tmp_mm = MPIMatrix{T,A}(undef, m, m)
+        tmp_m_local1 = A{T}(undef, m)
+        tmp_m_local2 = A{T}(undef, m)
+
+        new{T,A}(m, n, β, β_prev, δ, λ, t, breslow, σ, π_ind, tmp_n, tmp_1m, tmp_mm, tmp_m_local1, tmp_m_local2, eval_obj)
     end
 end
     
@@ -69,83 +77,43 @@ function reset!(v::COXVariables{T,A}; seed=nothing) where {T,A}
 end
 
 function soft_threshold(x::T, λ::T) ::T where T <: AbstractFloat
-    @assert λ >= 0 "Argument λ must be greater than or equal to zero."
     x > λ && return (x - λ)
     x < -λ && return (x + λ)
     return zero(T)
 end
-
-function π_δ!(out, w, W_dist, δ, breslow, W_range)
-    # fill `out` with zeros beforehand. 
-    m = length(δ)
-    W_base = minimum(W_range) - 1
-    for i in 1:m
-        bi = breslow[i]
-        wi = w[i]
-        @simd for j in W_range
-            @inbounds if bi <= breslow[j]
-                @inbounds out[i] += δ[j] * wi / W_dist.localarray[j - W_base]
-            end
-        end
-    end
-    DistStat.Barrier()
-    DistStat.Allreduce!(out)
-    return out
-end
-
-
-
 
 function get_breslow!(out, cumsum_w, bind)
     out .= cumsum_w[bind]
     out
 end
 
-
-
-function cox_grad!(out, w, W, W_dist, t, q, X, β, δ, bind)
-    T = eltype(β)
-    m, n = size(X)
-    mul!(w, X, β)
-    w .= exp.(w) 
-    cumsum!(q, w) # q is used as a dummy variable
-    get_breslow!(W, q, bind)
-    W_dist .= distribute(reshape(W, 1, :))
-    fill!(q, zero(eltype(q)))
-    π_δ!(q, w, W_dist, δ, bind, W_dist.partitioning[DistStat.Rank()+1][2])
-    q .= δ .- q
-    mul!(out, transpose(X), q) # ([n]) = (n x [m]) x (m)
-    out
-end
-
-cox_grad!(v::COXVariables{T,A}, X) where {T,A} = cox_grad!(v.grad, v.w, v.W, v.W_dist, v.t, v.q, X, v.β, v.δ, v.breslow)
-
 function update!(X::MPIArray, u::COXUpdate, v::COXVariables{T,A}) where {T,A}
-    #mul!(v.tmp_m_local1, X, v.β) # {m} = {m x [n]} * {[n]}.
-    #v.tmp_m_local1 .= exp.(v.tmp_m_local1) # w
-    #cumsum!(v.tmp_m_local2, v.tmp_m_local1) # W. TODO: deal with ties.
-    #v.tmp_1m .= distribute(reshape(v.tmp_m_local2, 1, :)) # W_dist: distribute W.
-    #v.tmp_mm .= v.π_ind .* v.tmp_m_local1 ./ v.tmp_1m # (π_ind .* w) ./ W_dist. computation order is determined for CuArray safety. 
-    #pd = mul!(v.tmp_m_local1, v.tmp_mm, v.δ) # {m} = {m x [m]} * {m}.
-    #v.tmp_m_local2 .= v.δ .- pd # {m}. 
-    #grad = mul!(v.tmp_n, transpose(X), v.tmp_m_local2) # {[n]} = {[n] x m} * {m}.
-    cox_grad!(v, X)
-    v.β .= soft_threshold.(v.β .+ v.σ .* v.grad , v.λ) # {[n]}.
+    mul!(v.tmp_m_local1, X, v.β) # {m} = {m x [n]} * {[n]}.
+    v.tmp_m_local1 .= exp.(v.tmp_m_local1) # w
+    cumsum!(v.tmp_m_local2, v.tmp_m_local1) # W. TODO: deal with ties.
+    get_breslow!(v.tmp_m_local2, v.tmp_m_local2, v.breslow)
+    v.tmp_1m .= distribute(reshape(v.tmp_m_local2, 1, :)) # W_dist: distribute W.
+    v.tmp_mm .= v.π_ind .* v.tmp_m_local1 ./ v.tmp_1m # (π_ind .* w) ./ W_dist. computation order is determined for CuArray safety. 
+    pd = mul!(v.tmp_m_local1, v.tmp_mm, v.δ) # {m} = {m x [m]} * {m}.
+    v.tmp_m_local2 .= v.δ .- pd # {m}. 
+    grad = mul!(v.tmp_n, transpose(X), v.tmp_m_local2) # {[n]} = {[n] x m} * {m}. 
+    v.β .= soft_threshold.(v.β .+ v.σ .* grad , v.λ) # {[n]}.
 end
+
 
 function get_objective!(X::MPIArray, u::COXUpdate, v::COXVariables{T,A}) where {T,A}
-    v.grad .= (v.β .!= 0) # grad is dummy
-    nnz = sum(v.grad)
-
+    v.tmp_n .= (v.β .== 0)
+    sparsity = sum(v.tmp_n)/size(v.tmp_n, 1)
     if v.eval_obj
-        v.w .= exp.(mul!(v.w, X, v.β))
-        cumsum!(v.q, v.w) # q is dummy
-        get_breslow!(v.W, v.q, v.breslow)
-        obj = dot(v.δ, mul!(v.q, X, v.β) .- log.(v.W)) .- v.λ .* sum(abs.(v.β))
-        return false, (obj, nnz)
+        v.tmp_m_local1 .= exp.(mul!(v.tmp_m_local1, X, v.β))
+        cumsum!(v.tmp_m_local1, v.tmp_m_local1)
+        get_breslow!(v.tmp_m_local1, v.tmp_m_local1, v.breslow)
+        obj = dot(v.δ, mul!(v.tmp_m_local2, X, v.β) .- log.(v.tmp_m_local1)) .- v.λ .* sum(abs.(v.β))
+        
+        return false, (obj, sparsity)
     else
-        v.grad .= abs.(v.β_prev .- v.β)
-        return false, (maximum(v.grad), nnz)
+        v.tmp_n .= abs.(v.β_prev .- v.β)
+        return false, (maximum(v.tmp_n), sparsity)
     end
 end
 
@@ -191,30 +159,6 @@ using CuArrays, CUDAnative
 if opts["gpu"]
     A = CuArray
 
-    # All the GPU-related functions here
-    function π_δ_kernel!(out, w, W_dist, δ, breslow, W_range)
-        # fill `out` with zeros beforehand.
-        idx_x = (blockIdx().x-1) * blockDim().x + threadIdx().x
-        stride_x = blockDim().x * gridDim().x
-        W_base = minimum(W_range) - 1
-        for i in idx_x:stride_x:length(out)
-            for j in W_range
-                @inbounds if breslow[i] <= breslow[j]
-                    out[i] += δ[j] * w[i] / W_dist[j - W_base]
-                end
-            end
-        end  
-    end
-
-    function π_δ!(out::CuArray, w::CuArray, W_dist, δ, breslow, W_range)
-        numblocks = ceil(Int, length(w)/256)
-        CuArrays.@sync begin
-            @cuda threads=256 blocks=numblocks π_δ_kernel!(out, w, W_dist.localarray, δ, breslow, W_range)
-        end
-        DistStat.Allreduce!(out)
-        out
-    end
-
     function breslow_kernel!(out, cumsum_w, bind)
         idx_x = (blockIdx().x-1) * blockDim().x + threadIdx().x
         stride_x = blockDim().x * gridDim().x
@@ -231,6 +175,7 @@ if opts["gpu"]
         out
     end
 end
+
 if opts["Float32"]
     T = Float32
 end
