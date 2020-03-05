@@ -188,11 +188,11 @@ eval_obj = opts["eval_obj"]
 
 using SnpArrays, CSV
 
-pheno = CSV.read("/home/kose/project/dist-stat-julia/ukb_short.filtered.tab"; delim="\t")
+pheno = CSV.read("/shared/ukbk/ukb_short.filtered.tab"; delim="\t")
 δ = convert(A{T}, pheno[1:end, :T2D])
 t = convert(A{T}, pheno[1:end, :AgeAtOnset])
 print(size(δ), size(t))
-dat = SnpData("/home/kose/project/dist-stat-julia/filtered_merged")
+dat = SnpData("/shared/ukbk/filtered_merged")
 
 m, n = size(dat.snparray)
 

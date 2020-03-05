@@ -1,0 +1,11 @@
+#!/bin/sh
+#$ -cwd
+#$ -N cox-real
+#$ -pe mpi 720
+#$ -j y
+date
+module load mpi/openmpi-x86_64
+export LAMBDA=$1
+. /shared/julia_setup.sh
+export OMP_NUM_THREADS=1
+mpirun -np 720 julia --project=/shared/julia_pkgs/dev/DistStat/examples /shared/julia_pkgs/dev/DistStat/examples/cox-breslow-ukbk.jl --lambda=$LAMBDA --step=10 --iter=2100 --eval_obj --prefix $LAMBDA
