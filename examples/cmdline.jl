@@ -59,8 +59,19 @@ function parse_commandline_mds()
     parse_commandline_nmf()
 end
 
-function parse_commandline_cox()
+function parse_commandline_cox_base()
     s = parse_commandline()
+    @add_arg_table s begin
+        "--lambda"
+            help = "regularization parameter"
+            arg_type = Float64
+            default=0.0
+    end
+    return s
+end
+
+function parse_commandline_cox()
+    s = parse_commandline_cox_base()
     @add_arg_table s begin
         "--rows"
             help = "number of rows"
@@ -74,13 +85,22 @@ function parse_commandline_cox()
             help = "rate of censored subjects"
             arg_type = Float64
             default=0.5
-        "--lambda"
-            help = "regularization parameter"
-            arg_type = Float64
-            default=0.0
+    end
+
+    return parse_args(s)
+end
+
+function parse_commandline_cox_ukbk()
+    s = parse_commandline_cox_base()
+    @add_arg_table s begin
+        "--prefix"
+            help = "prefix for the output file"
+            arg_type = String
+            default = "test"
     end
     return parse_args(s)
 end
+
 
 function parse_commandline_pet()
     s = parse_commandline()
