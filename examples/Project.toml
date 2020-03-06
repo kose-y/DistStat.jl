@@ -1,4 +1,7 @@
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+CuArrays = "3a865a2d-5b23-5a0f-bc46-62713ec82fae"
 DistStat = "3d267f78-ae7e-11e9-2f9f-dba0a42dab65"
 NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
+SnpArrays = "4e780e97-f5bf-4111-9dc4-b70aaf691b06"

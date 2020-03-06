@@ -74,7 +74,7 @@ mutable struct COXVariables{T, A}
     end
 end
     
-function reset!(v::COXVariables{T,A}; seed=nothing) where {T,A}
+function reset!(v::COXVariables{T,A}) where {T,A}
     fill!(v.β, zero(T))
     fill!(v.β_prev, zero(T))
     v.obj_prev = -Inf
@@ -106,6 +106,7 @@ end
 
 
 function get_objective!(X::MPIArray, u::COXUpdate, v::COXVariables{T,A}) where {T,A}
+    GC.gc()
     v.tmp_n .= (v.β .!= 0)
     nonzeros = sum(v.tmp_n)
     if v.eval_obj
@@ -160,26 +161,6 @@ interval = opts["step"]
 prefix = opts["prefix"]
 T = Float64
 A = Array
-using CuArrays, CUDAnative
-if opts["gpu"]
-    A = CuArray
-
-    function breslow_kernel!(out, cumsum_w, bind)
-        idx_x = (blockIdx().x-1) * blockDim().x + threadIdx().x
-        stride_x = blockDim().x * gridDim().x
-        for i = idx_x: stride_x:length(out)
-            out[i]=cumsum_w[bind[i]]
-        end
-    end
-
-    function get_breslow!(out::CuArray, cumsum_w::CuArray, bind)
-        numblocks = ceil(Int, length(out)/256)
-        CuArrays.@sync begin
-            @cuda threads=256 blocks=numblocks breslow_kernel!(out, cumsum_w, bind)
-        end
-        out
-    end
-end
 
 if opts["Float32"]
     T = Float32
@@ -224,7 +205,7 @@ uquick = COXUpdate(;maxiter=2, step=1, verbose=true)
 u = COXUpdate(;maxiter=iter, step=interval, verbose=true)
 v = COXVariables(X, δ, lambda, t; eval_obj=eval_obj) 
 cox!(X, uquick, v)
-reset!(v; seed=seed)
+reset!(v)
 if DistStat.Rank() == 0
     @time cox!(X, u, v)
 else
