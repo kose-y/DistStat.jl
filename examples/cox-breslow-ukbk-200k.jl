@@ -1,5 +1,6 @@
 using DistStat, Random, LinearAlgebra
 
+
 mutable struct COXUpdate
     maxiter::Int
     step::Int
@@ -60,7 +61,6 @@ mutable struct COXVariables{T, A}
         t_dist = distribute(reshape(t, 1, :))
         fill!(π_ind, one(T))
         π_ind .= ((π_ind .* t_dist) .- t) .<= 0
-        println(π_ind)
 
         tmp_n = MPIVector{T,A}(undef, n)
         tmp_1m = MPIMatrix{T,A}(undef, 1, m)
@@ -74,7 +74,7 @@ mutable struct COXVariables{T, A}
     end
 end
     
-function reset!(v::COXVariables{T,A}; seed=nothing) where {T,A}
+function reset!(v::COXVariables{T,A}) where {T,A}
     fill!(v.β, zero(T))
     fill!(v.β_prev, zero(T))
     v.obj_prev = -Inf
@@ -104,7 +104,9 @@ function update!(X::MPIArray, u::COXUpdate, v::COXVariables{T,A}) where {T,A}
     v.β .= soft_threshold.(v.β .+ v.σ .* grad , v.λ) # {[n]}.
 end
 
+
 function get_objective!(X::MPIArray, u::COXUpdate, v::COXVariables{T,A}) where {T,A}
+    GC.gc()
     v.tmp_n .= (v.β .!= 0)
     nonzeros = sum(v.tmp_n)
     if v.eval_obj
@@ -146,49 +148,64 @@ function cox!(X::MPIArray, u::COXUpdate, v::COXVariables)
     loop!(X, u, cox_one_iter!, get_objective!, v)
 end
 
+
 include("cmdline.jl")
-opts = parse_commandline_cox()
+opts = parse_commandline_cox_ukbk()
 if DistStat.Rank() == 0
     println("world size: ", DistStat.Size())
     println(opts)
 end
 
-m = opts["rows"]
-n = opts["cols"]
 iter = opts["iter"]
 interval = opts["step"]
-prefix = "test"
+prefix = opts["prefix"]
 T = Float64
 A = Array
 
 if opts["Float32"]
     T = Float32
 end
-init_opt = opts["init_from_master"]
-seed = opts["seed"]
 eval_obj = opts["eval_obj"]
-censor_rate = opts["censor_rate"]
+
+using SnpArrays, CSV
+
+pheno = CSV.read("/shared/ukbk/ukb_short.filtered.200k.tab"; delim="\t")
+δ = convert(A{T}, pheno[1:end, :T2D])
+t = convert(A{T}, pheno[1:end, :AgeAtOnset])
+print(size(δ), size(t))
+dat = SnpData("/shared/ukbk/filtered_200k")
+
+m, n = size(dat.snparray)
+
+n += 11 -5 # 11 unpenalized variables
+
 lambda = MPIVector{T,A}(undef, n)
 fill!(lambda, opts["lambda"])
 if DistStat.Rank() == DistStat.Size() - 1
-    lambda.localarray[end-3:end] .= zero(T)
+    lambda.localarray[end-10:end] .= zero(T) # 11 unpenalized variables
+end
+
+X = MPIMatrix{T,A}(undef, m, n)
+
+# copyto! X
+idx1, idx2 = X.partitioning[DistStat.Rank() + 1]
+if DistStat.Rank() == DistStat.Size() - 1
+    tmp = A{T}(undef, m, size(X.localarray, 2) - 11)
+    Base.copyto!(tmp, @view(dat.snparray[1:m, idx2[1:end-11]]); impute=true)
+    X.localarray[:, 1:end-11] .= tmp
+    X.localarray[:, end-10:end] .= convert(A{T}, pheno[1:m, 2:12])
+    tmp = nothing
+    GC.gc()
+else
+    Base.copyto!(X.localarray, @view(dat.snparray[1:m, idx2]); impute=true)
 end
 
 
-X = MPIMatrix{T, A}(undef, m, n)
-rand!(X; common_init=init_opt, seed=seed)
-δ = convert(A{T}, rand(m) .> censor_rate)
-DistStat.Bcast!(δ) # synchronize the choice for δ.
-
 uquick = COXUpdate(;maxiter=2, step=1, verbose=true)
 u = COXUpdate(;maxiter=iter, step=interval, verbose=true)
-# for simulation run, we just assume that the data are in reversed order of survivial time
-t = convert(A{T}, collect(reverse(1:size(X,1))))
-t[2] = t[1]
-t[3] = t[1]
 v = COXVariables(X, δ, lambda, t; eval_obj=eval_obj) 
 cox!(X, uquick, v)
-reset!(v; seed=seed)
+reset!(v)
 if DistStat.Rank() == 0
     @time cox!(X, u, v)
 else

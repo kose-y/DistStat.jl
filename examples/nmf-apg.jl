@@ -70,7 +70,7 @@ function update_V!(X::MPIArray, u::APGUpdate, v::NMFVariables{T,A}) where {T,A}
     WWt = mul!(v.tmp_rr, v.W, transpose(v.W))
     WWtVt = mul!(v.tmp_rm2, WWt, v.Vt)
     v.tmp_rr .^=2
-    sigma = one(T) / (2 * sqrt(sum(v.tmp_rr)) + u.lambda)
+    sigma = one(T) / (2 * (sum(v.tmp_rr)) + u.lambda)
     v.Vt .= max.(v.Vt .- sigma .* (WWtVt .- WXt), zero(T))
 end
 
@@ -79,7 +79,7 @@ function update_W!(X::MPIArray, u::APGUpdate, v::NMFVariables{T,A}) where {T,A}
     VtV = mul!(v.tmp_rr, v.Vt, transpose(v.Vt))
     VtVW = mul!(v.tmp_rn2, VtV, v.W)
     v.tmp_rr .^= 2
-    tau = one(T) / (2 * sqrt(sum(v.tmp_rr)) + u.lambda)
+    tau = one(T) / (2 * (sum(v.tmp_rr)) + u.lambda)
     v.W .= max.(v.W .- tau .* (VtVW .- VtX), zero(T))
 end
 
