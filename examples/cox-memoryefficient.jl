@@ -1,4 +1,4 @@
-using DistStat, Random, LinearAlgebra
+using DistStat, Random, LinearAlgebra, LoopVectorization
 
 mutable struct COXUpdate
     maxiter::Int
@@ -79,13 +79,10 @@ function π_δ!(out, w, W_dist, δ, breslow, W_range)
     # fill `out` with zeros beforehand. 
     m = length(δ)
     W_base = minimum(W_range) - 1
-    for i in 1:m
-        bi = breslow[i]
-        wi = w[i]
-        @simd for j in W_range
-            @inbounds if bi <= breslow[j]
-                @inbounds out[i] += δ[j] * wi / W_dist.localarray[j - W_base]
-            end
+    W_local = W_dist.localarray
+    @avx for i in 1:m
+        for j in 1:length(W_range)
+            out[i] += ifelse(breslow[i] <= breslow[j + W_base], δ[j + W_base] * w[i] / W_local[j], zero(eltype(w)))
         end
     end
     DistStat.Barrier()
