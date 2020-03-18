@@ -81,9 +81,11 @@ function π_δ!(out, w, W_dist, δ, breslow, W_range)
     W_base = minimum(W_range) - 1
     W_local = W_dist.localarray
     @avx for i in 1:m
+        outi = zero(eltype(w))
         for j in 1:length(W_range)
-            out[i] += ifelse(breslow[i] <= breslow[j + W_base], δ[j + W_base] * w[i] / W_local[j], zero(eltype(w)))
+            outi += ifelse(breslow[i] <= breslow[j + W_base], δ[j + W_base] * w[i] / W_local[j], zero(eltype(w)))
         end
+        out[i] = outi
     end
     DistStat.Barrier()
     DistStat.Allreduce!(out)
