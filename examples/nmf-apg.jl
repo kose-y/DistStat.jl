@@ -137,7 +137,7 @@ interval = opts["step"]
 T = Float64
 A = Array
 if opts["gpu"]
-    using CuArrays
+    using CUDA
     A = CuArray
 end
 if opts["Float32"]

@@ -1,7 +1,7 @@
 using DistStat, Pkg, Test
 
 if get(ENV,"JULIA_MPI_TEST_ARRAYTYPE","") == "CuArray"
-    using CuArrays
+    using CUDA
     A = CuArray
 else
     A = Array

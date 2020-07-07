@@ -155,7 +155,7 @@ iter = opts["iter"]
 interval = opts["step"]
 T = Float64
 A = Array
-using CuArrays, CUDAnative
+using CUDA
 if opts["gpu"]
     A = CuArray
 
@@ -169,7 +169,7 @@ if opts["gpu"]
 
     function get_breslow!(out::CuArray, cumsum_w::CuArray, bind)
         numblocks = ceil(Int, length(out)/256)
-        CuArrays.@sync begin
+        CUDA.@sync begin
             @cuda threads=256 blocks=numblocks breslow_kernel!(out, cumsum_w, bind)
         end
         out

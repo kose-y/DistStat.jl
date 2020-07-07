@@ -3,7 +3,7 @@ using DistStat, LinearAlgebra, Test
 type=[Float32,Float64]
 
 if get(ENV,"JULIA_MPI_TEST_ARRAYTYPE","") == "CuArray"
-    using CuArrays
+    using CUDA
     ArrayType = CuArray
 else
     ArrayType = Array
