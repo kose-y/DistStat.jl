@@ -7,18 +7,20 @@ set -x
 
 MPI_IMPL="$1"
 os=`uname`
-OMPIVER=openmpi-3.0.0
-MPICHVER=mpich-3.2.1
-IMPIVER=2019.4.243
+OMPIVER=4.0.3
+MPICHVER=3.3.2
+IMPIVER=2019.7.217
 case "$os" in
     Darwin)
-        brew update
-        brew upgrade cmake
         case "$MPI_IMPL" in
+            none)
+                ;;
             mpich|mpich3)
+                brew update
                 brew install mpich
                 ;;
             openmpi)
+                brew update
                 brew install openmpi
                 ;;
             *)
@@ -29,38 +31,43 @@ case "$os" in
     ;;
 
     Linux)
-        sudo apt-get update -q
         case "$MPI_IMPL" in
+            none)
+                ;;
             mpich1)
+                sudo apt-get update -q
                 sudo apt-get install -y gfortran mpich-shmem-bin libmpich-shmem1.0-dev
                 ;;
             mpich2)
+                sudo apt-get update -q
                 sudo apt-get install -y gfortran mpich2 libmpich2-3 libmpich2-dev
                 ;;
             mpich|mpich3)
+                sudo apt-get update -q
                 sudo apt-get install -y gfortran hwloc ccache
                 sudo /usr/sbin/update-ccache-symlinks
                 export PATH="/usr/lib/ccache:$PATH"
-                wget http://www.mpich.org/static/downloads/3.2.1/$MPICHVER.tar.gz
-                tar -zxf $MPICHVER.tar.gz
-                cd $MPICHVER
+                wget http://www.mpich.org/static/downloads/$MPICHVER/mpich-$MPICHVER.tar.gz
+                tar -zxf mpich-$MPICHVER.tar.gz
+                cd mpich-$MPICHVER
                 sh ./configure --prefix=$HOME/mpich --enable-shared > /dev/null
                 make -j > /dev/null
                 sudo make install > /dev/null
                 ;;
             openmpi)
+                sudo apt-get update -q
                 sudo apt-get install -y gfortran ccache
                 sudo /usr/sbin/update-ccache-symlinks
                 export PATH="/usr/lib/ccache:$PATH"
-                wget --no-check-certificate https://www.open-mpi.org/software/ompi/v3.0/downloads/$OMPIVER.tar.gz
-                tar -zxf $OMPIVER.tar.gz
-                cd $OMPIVER
+                wget --no-check-certificate https://www.open-mpi.org/software/ompi/v4.0/downloads/openmpi-$OMPIVER.tar.gz
+                tar -zxf openmpi-$OMPIVER.tar.gz
+                cd openmpi-$OMPIVER
                 sh ./configure --prefix=$HOME/openmpi > /dev/null
                 make -j > /dev/null
                 sudo make install > /dev/null
                 ;;
             intelmpi)
-                wget http://registrationcenter-download.intel.com/akdlm/irc_nas/tec/15553/l_mpi_$IMPIVER.tgz
+                wget http://registrationcenter-download.intel.com/akdlm/irc_nas/tec/16546/l_mpi_2019.7.217.tgz
                 tar -xzf l_mpi_$IMPIVER.tgz
                 cd l_mpi_$IMPIVER
                 cat << EOF > intel.conf
