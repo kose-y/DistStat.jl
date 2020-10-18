@@ -24,14 +24,14 @@ for T in type
 
   @test isapprox(B_dist.localarray,B[:,cols2])
 
-  C_dist = MPIArray{T, 2, ArrayType}(undef, 7, 9)
-  cols3=C_dist.partitioning[DistStat.Rank()+1][2]
-  randn!(C_dist; seed=0,common_init=true)
+  #C_dist = MPIArray{T, 2, ArrayType}(undef, 7, 9)
+  #cols3=C_dist.partitioning[DistStat.Rank()+1][2]
+  #randn!(C_dist; seed=0,common_init=true)
 
-  C=Array{T}(undef,size(C_dist))
-  Random.seed!(0)
-  randn!(C)
+  #C=Array{T}(undef,size(C_dist))
+  #Random.seed!(0)
+  #randn!(C)
   
-  @test isapprox(C_dist.localarray, ArrayType{T}(C[:,cols3]))
+  #@test isapprox(C_dist.localarray, ArrayType{T}(C[:,cols3]))
 
 end
