@@ -85,6 +85,7 @@ end
 function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::Transpose{T,MPIMatrix{T,AT}}; 
                             tmp::AbstractArray{T,2}=AT{T}(undef, size(B,2), size(B,1))) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A); tmp=tmp)
+    C
 end
 
 
@@ -125,6 +126,7 @@ end
 function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::MPIMatrix{T,AT}; 
                             tmp::AbstractArray{T,2}=AT{T}(undef,size(B,1), size(B,2))) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A);tmp=tmp)
+    C
 end
 
 """
@@ -147,11 +149,32 @@ end
 function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, 
                             B::Transpose{T, ATT} where ATT <: AbstractMatrix{T}) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A))
+    C
 end
 
 function LinearAlgebra.mul!(C::Transpose{T,MPIMatrix{T,AT}}, A::Transpose{T,MPIMatrix{T,AT}}, B::AbstractMatrix{T}) where {T,AT}
     LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A))
+    C
 end
+
+"""
+Scenarioes 9 and 10
+"""
+function LinearAlgebra.mul!(C::AbstractMatrix{T}, A::MPIMatrix{T,AT}, B::AbstractMatrix{T}) where {T, AT}
+    localA = get_local(A)
+    LinearAlgebra.mul!(C, localA, B[A.partitioning[Rank() + 1][2], :])
+    sync()
+    Allreduce!(C)
+    C
+end
+
+function LinearAlgebra.mul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, 
+    B::Transpose{T, MPIMatrix{T,AT}}) where {T, AT}
+    LinearAlgebra.mul!(transpose(C), transpose(B), transpose(A))
+    C
+end 
+
+
 
 """
 Scenario 6: distributed matrix x broadcasted vector multiplications
