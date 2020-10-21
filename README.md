@@ -18,3 +18,10 @@ For CUDA support:
 - CUDA >= 9.0
 - CUDA.jl, GPUArrays.jl (and their dependencies)
 - CUDA-aware MPI installation (of OpenMPI, MPICH, and Intel MPI, only OpenMPI supports CUDA)
+
+To install the package, run the following code in Julia.
+
+```julia
+using Pkg
+pkg"add https://github.com/kose-y/DistStat.jl"
+```
