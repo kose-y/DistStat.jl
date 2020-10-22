@@ -1,0 +1,37 @@
+[aws]
+aws_region_name = ap-northeast-2
+
+[cluster test]
+vpc_settings = testcfn
+key_name = KoseKey
+initial_queue_size = 0
+max_queue_size = 20
+ebs_settings = helloebs
+scheduler = sge
+compute_instance_type = c5.18xlarge
+master_instance_type = c5.18xlarge
+cluster_type = spot
+spot_price = 1.20
+base_os = centos7
+scaling_settings = custom
+extra_json = {"cfncluster" : { "cfn_scheduler_slots" : "36"} }
+
+[ebs helloebs]
+ebs_snapshot_id = snap-0fc92388ff8d5d6ba
+volume_size = 60
+
+[vpc testcfn]
+master_subnet_id = subnet-d1543e9d
+vpc_id = vpc-7528211d
+
+[global]
+update_check = true
+sanity_check = true
+cluster_template = test
+
+[aliases]
+ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
+
+[scaling custom]
+scaling_idletime = 20
+
