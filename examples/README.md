@@ -25,7 +25,11 @@ The directory `cluster` contains the scripts to run the experiments in cluster s
 
 #### CfnCluster/ParallelCluster
 First, CfnCluster or ParallelCluster needs to be installed on a local machine. 
-The virtual clusters are set up by placing the file `config` as `~/.cfncluster/config`.  This can be set up by placing the file `config_parallelcluster` as `~/.parallelcluster/config` on the local machine. The files are configured to use 1-20 `c5.18xlarge` instances as the workers, with 36 MPI slots per instance. 
+The virtual clusters are set up by placing the file `config` as `~/.cfncluster/config`.  This can be set up by placing the file `config_parallelcluster` as `~/.parallelcluster/config` on the local machine. Or, they can be created using the command:
+```bash
+cfncluster configure
+```
+The files are configured to use 1-20 `c5.18xlarge` instances as the workers, with 36 MPI slots per instance. 
 Visit [here](https://cfncluster.readthedocs.io/en/latest/configuration.html) to see more information regarding setup ParallelCluster, and [here](https://docs.aws.amazon.com/parallelcluster/index.html) for the newer ParallelCluster. 
 
 Then, the command
