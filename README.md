@@ -25,3 +25,7 @@ To install the package, run the following code in Julia.
 using Pkg
 pkg"add https://github.com/kose-y/DistStat.jl"
 ```
+
+### Examples
+
+Examples of nonnegative matrix factorization, multidimensional scaling, and l1-regularized Cox regression is provided in the directory `examples/`. Settings for multi-gpu experiments and multi-instance cloud experiments are also provided.
