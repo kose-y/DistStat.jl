@@ -1,7 +1,5 @@
 # Benchmarks for `DistStat.jl`
 
-Copyright Seyoon Ko, 2020.
-
 These files contain scripts to measure performance of the examples for `DistStat.jl` package.
 
 ## Running Benchmarks
