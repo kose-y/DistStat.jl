@@ -1,8 +1,8 @@
-# DistStat
+# DistStat.jl
 
 [![Build Status](https://travis-ci.com/kose-y/DistStat.jl.svg?branch=master)](https://travis-ci.com/kose-y/DistStat.jl)
 
-Distributed statistical computing
+DistStat.jl: Towards unified programming for high-performance statistical computing environments in Julia
 
 
 ### Installation Information
