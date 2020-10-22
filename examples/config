@@ -1,9 +1,9 @@
 [aws]
-aws_region_name = ap-northeast-2
+aws_region_name = <your region (we used ap-northeast-2)>
 
 [cluster test]
 vpc_settings = testcfn
-key_name = KoseKey
+key_name = <your key file name>
 initial_queue_size = 0
 max_queue_size = 20
 ebs_settings = helloebs
@@ -17,12 +17,12 @@ scaling_settings = custom
 extra_json = {"cfncluster" : { "cfn_scheduler_slots" : "36"} }
 
 [ebs helloebs]
-ebs_snapshot_id = snap-0fc92388ff8d5d6ba
+ebs_snapshot_id = <your snapshot id, if reusing a snapshot>
 volume_size = 60
 
 [vpc testcfn]
-master_subnet_id = subnet-d1543e9d
-vpc_id = vpc-7528211d
+master_subnet_id = <your master subnet id>
+vpc_id = <your vpc id>
 
 [global]
 update_check = true
