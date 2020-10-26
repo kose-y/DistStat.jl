@@ -7,8 +7,17 @@ These files contain scripts to measure performance of the examples for `DistStat
 For our experiments in Section 5, we used Julia version 1.2.0.
 You can either use the older version used for our experiments by checking out the tag `experiment` of this repository, or use the recent set of packages by using the `master` branch. 
 
-Configuration for each file is determined by a set of command-line arguments. For example,
+The necessary packages can be installed using the commands:
+```julia
+using Pkg
+pkg"add ArgParse CSV"
+```
+To use GPUs for the experiment, CUDA.jl is also necessary.
+```julia
+pkg"add CUDA"
+```
 
+Configuration for each file is determined by a set of command-line arguments. For example,
 ```bash
 mpirun -np 4 julia nmf-mult.jl --rows=10000 --cols=10000 --r=20 --iter=10000 --gpu --Float32 --init_from_master --seed 8787
 ```
@@ -18,7 +27,6 @@ Run, for example,
 julia nmf-mult.jl --help
 ```
 for the full list of available command-line arguments for each example file. Output sample:
-
 ```
 usage: nmf-mult.jl [--gpu] [--iter ITER] [--step STEP] [--seed SEED]
                    [--Float32] [--set_zero_subnormals]
@@ -48,13 +56,6 @@ optional arguments:
 
 The files `run_nmfs.sh`, `run_mds.sh`, and `run_cox.sh` contain scripts to run experiments for the Section 5. 
 The scripts were executed in a system with 8 Nvidia GTX 1080 GPUs with CUDA 9.0. OpenMPI 3.0 compiled with [CUDA support](https://www.open-mpi.org/faq/?category=buildcuda) was used for the experiments.
-
-The necessary packages can be installed using the commands:
-
-```julia
-using Pkg
-pkg"add ArgParse CSV CUDA"
-```
 
 ### Virtual Clusters using CfnCluster (or ParallelCluster) with Sun Grid Engine
 
@@ -89,11 +90,6 @@ cfncluster delete example
 For our experiments, we first installed the Intel MKL in `/shared/intel`, where the shared file system is mounted under `/shared`.
 Then, Julia 1.2.0 was compiled from source incorporating the MKL. 
 The Julia packages are installed in `/shared/julia_pkgs` using the environment variable `JULIA_DEPOT_PATH=/shared/julia_pkgs`.
-The necessary packages can be installed using the following command:
-```julia
-using Pkg
-pkg"add ArgParse CSV"
-```
 
 For each job, the script `cluster/julia_setup.sh` (placed in `/shared/julia_setup.sh` on the cloud) set up the necessary environment variables.
 
