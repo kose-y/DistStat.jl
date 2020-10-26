@@ -5,7 +5,8 @@ These files contain scripts to measure performance of the examples for `DistStat
 ## Running Benchmarks
 
 For our experiments in Section 5, we used Julia version 1.2.0.
-You can either use the older version used for our experiments by checking out the tag `experiment` of this repository, or use the recent set of package by using the `master` branch.
+You can either use the older version used for our experiments by checking out the tag `experiment` of this repository, or use the recent set of packages by using the `master` branch. 
+
 
 ### Multi-GPU
 
