@@ -17,7 +17,7 @@ Run, for example,
 ```bash
 julia nmf-mult.jl --help
 ```
-for the full list of available command-line arguments.
+for the full list of available command-line arguments for each example file.
 
 ### Multi-GPU
 
