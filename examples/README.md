@@ -7,7 +7,7 @@ These files contain scripts to measure performance of the examples for `DistStat
 For our experiments in Section 5, we used Julia version 1.2.0.
 You can either use the older version used for our experiments by checking out the tag `experiment` of this repository, or use the recent set of packages by using the `master` branch. 
 
-The necessary packages can be installed using the commands:
+The necessary packages can be installed using the following commands:
 ```julia
 using Pkg
 pkg"add ArgParse CSV CUDA"
