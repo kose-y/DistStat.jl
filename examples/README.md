@@ -10,11 +10,7 @@ You can either use the older version used for our experiments by checking out th
 The necessary packages can be installed using the commands:
 ```julia
 using Pkg
-pkg"add ArgParse CSV"
-```
-To use GPUs for the experiment, CUDA.jl is also necessary.
-```julia
-pkg"add CUDA"
+pkg"add ArgParse CSV CUDA"
 ```
 
 Configuration for each file is determined by a set of command-line arguments. For example,
