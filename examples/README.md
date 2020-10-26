@@ -12,12 +12,37 @@ Configuration for each file is determined by a set of command-line arguments. Fo
 ```bash
 mpirun -np 4 julia nmf-mult.jl --rows=10000 --cols=10000 --r=20 --iter=10000 --gpu --Float32 --init_from_master --seed 8787
 ```
-runs NMF with the multiplicative algorithm with randomly generated data of size 10,000 x 10,000 with the inner dimension of r = 20 for 10,000 iterations on GPU, with single precision (`--Float32`). For reproducibility, the random numbers are generated from a single process on CPU, then distributed to the processes (`--init_from_master`), using seed 8787 (`--seed`).
+runs NMF with the multiplicative algorithm with randomly generated data of size 10,000 x 10,000 with the inner dimension of r = 20 for 10,000 iterations on GPU, with single precision (`--Float32`). For reproducibility, the random numbers are generated from a single process on CPU (`--init_from_master`) using the seed 8787 (`--seed`), then distributed to the processes.
 Run, for example, 
 ```bash
 julia nmf-mult.jl --help
 ```
-for the full list of available command-line arguments for each example file.
+for the full list of available command-line arguments for each example file. Output sample:
+
+```
+usage: nmf-mult.jl [--gpu] [--iter ITER] [--step STEP] [--seed SEED]
+                   [--Float32] [--set_zero_subnormals]
+                   [--init_from_master] [--eval_obj] [--rows ROWS]
+                   [--cols COLS] [--r R] [-h]
+optional arguments:
+  --gpu                 use gpu
+  --iter ITER           number of iterations (type: Int64, default:
+                        1000)
+  --step STEP           interval of checking monitored values (type:
+                        Int64, default: 100)
+  --seed SEED           seed (type: Int64, default: 777)
+  --Float32             use Float32 instead of Float64
+  --set_zero_subnormals
+                        set subnormals to zero
+  --init_from_master    use centralized random initialization (costly)
+  --eval_obj            evaluate objective function (costly). Maximum
+                        difference from the previous iteration is
+                        printed otherwise.
+  --rows ROWS           number of rows (type: Int64, default: 10000)
+  --cols COLS           number of cols (type: Int64, default: 10000)                                                                                   
+  --r R                 intermediate size (type: Int64, default: 20)
+  -h, --help            show this help message and exit
+```
 
 ### Multi-GPU
 
