@@ -87,7 +87,7 @@ jobs:
       julia: 1.4
       os: linux
       after_success: # Intentionally rerun tests
-        - julia -e 'using Pkg; cd(Pkg.dir("MPI")); Pkg.add("Coverage")'
+        - julia -e 'using Pkg; cd(Pkg.dir("Dist_Stat")); Pkg.add("Coverage")'
         - julia -e 'using Coverage; Coveralls.submit(Coveralls.process_folder())'
         - julia -e 'using Coverage; Codecov.submit(Codecov.process_folder())'
         
