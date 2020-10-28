@@ -27,7 +27,7 @@ for T in type
     @test isapprox(result1.localarray, ans1[:,cols1])
 
     result2=LinearAlgebra.mul!(transpose(C),transpose(A_dist),B)
-    @test isapprox(result2.localarray, ArrayType{T}(transpose(ans1))[:,cols1])
+    @test isapprox(transpose(result2).localarray, ArrayType{T}(transpose(ans1))[:,cols1])
 
 
     B_vec = ArrayType{T}(collect(1:7))
