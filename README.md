@@ -1,5 +1,6 @@
 # DistStat.jl
 
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://kose-y.github.io/DistStat.jl/dev)
 <!--[![Build Status](https://travis-ci.com/kose-y/DistStat.jl.svg?branch=master)](https://travis-ci.com/kose-y/DistStat.jl)-->
 
 DistStat.jl: Towards unified programming for high-performance statistical computing environments in Julia
