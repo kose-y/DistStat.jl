@@ -15,7 +15,7 @@ function Send(arr::AbstractArray, dest::Integer; tag::Integer=0)
 end
 
 function Recv!(arr::AbstractArray, src::Integer; tag::Integer=0)
-    MPI.Recv!(arr, src, tag, COMM_WORLD)
+    MPI.Recv!(arr, src, tag, COMM_WORLD, nothing)
 end
 
 function Isend(arr::AbstractArray, dest::Integer; tag::Integer=0)
@@ -26,8 +26,8 @@ function Irecv!(arr::AbstractArray, src::Integer; tag::Integer=0)
     MPI.Irecv!(arr, src, tag, COMM_WORLD)
 end
 
-function Reduce!(sendarr::AbstractArray, recvarr::AbstractArray; op=MPI.SUM, root::Integer=0)
-    MPI.Reduce!(sendarr, recvarr, op, root, COMM_WORLD)
+function Reduce!(sendarr::AbstractArray, recvarr::Union{AbstractArray, Nothing}; op=MPI.SUM, root::Integer=0)
+    MPI.Reduce!(MPI.RBuffer(sendarr, recvarr), op, root, COMM_WORLD)
 end
 
 function Allreduce!(arr::AbstractArray; op=MPI.SUM)
@@ -45,8 +45,8 @@ function Allgather!(sendarr::AbstractArray, recvarr::AbstractArray, count::Integ
 end
 
 function Allgatherv!(sendarr::AbstractArray, recvarr::AbstractArray, counts::Vector{<:Integer})
-#### TODO: auto-detect counts (is it doable?)
-    MPI.Allgatherv!(sendarr, recvarr, convert(Vector{Cint}, counts), COMM_WORLD)
+#### TODO: auto-detect counts (is it simple?)
+    MPI.Allgatherv!(sendarr, MPI.VBuffer(recvarr, counts), COMM_WORLD)
 end
 
 function Scatter!(sendarr::AbstractArray, recvarr::AbstractArray; root::Integer=0)

@@ -18,8 +18,6 @@ testfiles = sort(filter(istest, readdir(testdir)))
 @info "Running DistStat tests" ArrayType nprocs
 
 @testset "$f" for f in testfiles
-    mpiexec() do cmd
-        run(`$cmd -n $nprocs $(Base.julia_cmd()) $(joinpath(testdir, f))`)
-        @test true
-    end
+    run(`$(mpiexec()) -n $nprocs $(Base.julia_cmd()) $(joinpath(testdir, f))`)
+    @test true
 end

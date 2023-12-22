@@ -96,8 +96,8 @@ mutable struct MPIArray{T,N,A} <: AbstractArray{T,N}
         # return new{T,N,A}(sizes, localarray, partitioning, comm, win, rank, local_lengths(partitioning))
         return new{T,N,A}(sizes, localarray, partitioning, comm, rank, local_lengths(partitioning))
     end
-    MPIArray{T,N,A}(comm::MPI.Comm, partitions::NTuple{N,<:Integer}, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(comm, distribute.(sizes, partitions)...)
-    MPIArray{T,N,A}(::UndefInitializer, sizes::Vararg{<:Integer,N}) where {T,N,A} = MPIArray{T,N,A}(MPI.COMM_WORLD, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
+    MPIArray{T,N,A}(comm::MPI.Comm, partitions::NTuple{N,<:Integer}, sizes::Vararg{Integer,N}) where {T,N,A} = MPIArray{T,N,A}(comm, distribute.(sizes, partitions)...)
+    MPIArray{T,N,A}(::UndefInitializer, sizes::Vararg{Integer,N}) where {T,N,A} = MPIArray{T,N,A}(MPI.COMM_WORLD, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...)
 
 end
 
@@ -120,9 +120,9 @@ end
 
 MPIArray(init::Function, partition_sizes::Vararg{AbstractVector{<:Integer}, N};T=nothing,A=nothing) where N = MPIArray(MPI.COMM_WORLD, init, partition_sizes...;T=T,A=A)
 
-MPIArray(init::Function, partitions::NTuple{N,<:Integer}, sizes::Vararg{<:Integer,N};T=nothing, A=nothing) where N = MPIArray(init, distribute.(sizes, partitions)...; T=T,A=A)
+MPIArray(init::Function, partitions::NTuple{N,<:Integer}, sizes::Vararg{Integer,N};T=nothing, A=nothing) where N = MPIArray(init, distribute.(sizes, partitions)...; T=T,A=A)
 
-MPIArray(init::Function, sizes::Vararg{<:Integer,N}; T=nothing, A=nothing) where N = MPIArray(init, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...; T=T, A=A)
+MPIArray(init::Function, sizes::Vararg{Integer,N}; T=nothing, A=nothing) where N = MPIArray(init, (ones(Int, N-1)..., MPI.Comm_size(MPI.COMM_WORLD)), sizes...; T=T, A=A)
 
 function MPIArray(comm::MPI.Comm, localarray::AbstractArray)
     #TODO, construct from localarrays 

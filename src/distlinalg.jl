@@ -81,7 +81,7 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::Transpose
     sync()
     for i = 0:Size()-1
         # NOTE: an array is set to be contiguous only if the first indices are colon.
-        Reduce!(@view(tmp[:, C.partitioning[i+1][2]]), Rank() == i ? C.localarray : @view(tmp[:, C.partitioning[i+1][2]]); root=i)
+        Reduce!(@view(tmp[:, C.partitioning[i+1][2]]), Rank() == i ? C.localarray : nothing; root=i)
     end
     C
 end
@@ -352,7 +352,7 @@ function diag!(d::AbstractVector, M::MPIMatrix{T,A}) where {T,A}
     counts = reshape(map(x->convert(Cint, length(x[2])), M.partitioning), :)
     sync()
 
-    MPI.Allgatherv!(MPI.IN_PLACE, d, counts, MPI.COMM_WORLD)
+    MPI.Allgatherv!(MPI.VBuffer(d, counts), MPI.COMM_WORLD)
 end
 
 """
