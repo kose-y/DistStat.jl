@@ -81,7 +81,7 @@ function LinearAlgebra.mul!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::Transpose
     sync()
     for i = 0:Size()-1
         # NOTE: an array is set to be contiguous only if the first indices are colon.
-        Reduce!(@view(tmp[:, C.partitioning[i+1][2]]), C.localarray; root=i)
+        Reduce!(@view(tmp[:, C.partitioning[i+1][2]]), Rank() == i ? C.localarray : @view(tmp[:, C.partitioning[i+1][2]]); root=i)
     end
     C
 end

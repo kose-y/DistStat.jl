@@ -32,7 +32,7 @@ function distribute(a::AbstractArray{T,N}; root=0, A=nothing) where {T, N}
         push!(reqs, Irecv!(rslt.localarray, root))
     end
     for r in reqs
-        MPI.Wait!(r)
+        MPI.Wait(r)
     end
     rslt
 end
@@ -61,7 +61,7 @@ function distribute(a::AbstractSparseMatrix; root=0, A=Array)
     end
 
     for r in reqs
-        MPI.Wait!(r)
+        MPI.Wait(r)
     end
     rslt
 end
