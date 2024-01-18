@@ -1,8 +1,8 @@
 import LinearAlgebra: Transpose, opnorm
 import LinearAlgebra
 import Random: seed!
-using SparseArrays
-export fill_diag!, diag!
+using SparseArrays, MPI
+export fill_diag!, diag!, mul_1d!
 
 # temporary function. will actually add CUDA barrier function.
 function sync()
@@ -428,4 +428,54 @@ function _opnorm_quick(A::MPIMatrix)
     l1 = _opnorm_l1(A)
     linf = _opnorm_linfty(A)
     l1*linf
+end
+
+"""
+Scenario a: short and fat matrix multiplied by a fat matrix.
+A: r x [p], B: p x [q], C: r x [q]
+"""
+function mul_1d!(C::MPIMatrix{T,AT}, A::MPIMatrix{T,AT}, B::MPIMatrix{T,AT}) where {T,AT}
+    @assert size(C.localarray,1) == size(A.localarray,1) && size(C.localarray,2) == size(B.localarray,2)
+    team_size = length(A.local_lengths)
+    comm_rounds = length(A.local_lengths)
+    
+    buf = get_local(A) # will pass local A circularly
+    localB = get_local(B)
+    localC = C.localarray
+    
+    #fix src/dest process
+    
+    src = mod(A.myrank + 1, team_size)
+    dst = mod(A.myrank - 1, team_size)
+
+    tmp = zero(localC)
+    localC[:,:] = tmp
+    if(MPI.Comm_rank(COMM_WORLD) == 0)
+        println(localC)
+    end
+
+
+    # Start multiplication and reduce
+    A_ind = A.myrank
+    A_part = A.partitioning[A_ind + 1]
+    LinearAlgebra.mul!(tmp, buf, @view localB[A_part[2], :])
+    localC += tmp
+    if(MPI.Comm_rank(COMM_WORLD) == 0)
+        println(localC)
+    end
+
+    for _ in 1:(comm_rounds - 1)
+        A_ind = mod(A_ind + 1, team_size)
+        A_part = A.partitioning[A_ind + 1]
+
+        MPI.isend(buf, A.comm; dest = dst, tag = 0)
+        buf = MPI.recv(A.comm; source = src, tag = 0)
+
+        LinearAlgebra.mul!(tmp, buf, @view localB[A_part[2], :])
+        localC += tmp
+        if(MPI.Comm_rank(COMM_WORLD) == 0)
+            println(localC)
+        end
+    end
+    C
 end
