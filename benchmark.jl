@@ -61,38 +61,38 @@ sync(C)
 println(" ")
 println("1) time of mul! in DistStat.jl:")
 sync(C)
-@btime begin
+@time begin
     LinearAlgebra.mul!(C,A,B)
     sync(C)
 end
 println("2) time of mul! in DistStat.jl:")
 sync(C)
-@btime begin
+@time begin
     LinearAlgebra.mul!(C,A,B)
     sync(C)
 end
 println("3) time of mul! in DistStat.jl:")
 sync(C)
-@btime begin
+@time begin
     LinearAlgebra.mul!(C,A,B)
     sync(C)
 end
 println(" ")
 println("1) time of mul_1d! in DistStat.jl:")
 sync(C)
-@btime begin
+@time begin
     mul_1d!(C,A,B)
     sync(C)
 end
 println("2) time of mul_1d! in DistStat.jl:")
 sync(C)
-@btime begin
+@time begin
     mul_1d!(C,A,B)
     sync(C)
 end
 println("3) time of mul_1d! in DistStat.jl:")
 sync(C)
-@btime begin
+@time begin
     mul_1d!(C,A,B)
     sync(C)
 end

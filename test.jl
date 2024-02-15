@@ -21,21 +21,24 @@ include("src/broadcast.jl")
 include("src/arrayfunctions.jl")
 include("src/utils.jl")
 
-aa = randn(3,6)
-bb = randn(6,4)
+aa = randn(3,5)
+bb = randn(5,4)
 cc = randn(3,4)
 
 # aa = [1 1; 1 1]
 # bb = [1 2; 3 4]
 # cc = [0 1; 1 0]
 if Rank() == 0
-    println("Single process multiplication of AB:")
+    println("Singple-process multiplication of AB:")
     println(aa * bb)
-    println("Multi-process multiplication of AB:")
 end
 A = distribute(aa)
 B = distribute(bb)
 C = distribute(cc)
+
+if Rank() == 0
+    println("Multi-process multiplication of AB:")
+end
 
 mul_1d!(C, A, B)
 show(C)
