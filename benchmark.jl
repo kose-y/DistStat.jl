@@ -25,11 +25,12 @@ if Rank() != 0
     redirect_stdout(devnull)
 end
 
-p = 1000
+p = 5000
 if Rank() == 0
     aa = randn(p,p)
     bb = randn(p,p)
     cc = zeros(p,p)
+    LinearAlgebra.mul!(cc,aa,bb)
 else
     aa = [0.0;;]
     bb = [0.0;;]
@@ -37,23 +38,60 @@ end
 
 A = distribute(aa)
 B = distribute(bb)
-C = MPIArray{Float64, 2, Array}(undef, p,p)
+C = MPIArray{Float64, 2, Array}(undef, p, p)
+
+LinearAlgebra.mul!(C,A,B)
+mul_1d!(C,A,B)
 
 if Rank() == 0
-    println("time of base mul!:")
-    @btime begin
+    println("1) time of base mul!:")
+    @time begin
+        LinearAlgebra.mul!(cc,aa,bb)
+    end
+    println("2) time of base mul!:")
+    @time begin
+        LinearAlgebra.mul!(cc,aa,bb)
+    end
+    println("3) time of base mul!:")
+    @time begin
         LinearAlgebra.mul!(cc,aa,bb)
     end
 end
 sync(C)
-
-# println("time of mul! in DistStat.jl:")
-# @btime begin
-#     LinearAlgebra.mul!(C,A,B)
-# end
-# sync(C)
-
-println("time of mul_1d! in DistStat.jl (Rank 0):")
+println(" ")
+println("1) time of mul! in DistStat.jl:")
+sync(C)
+@btime begin
+    LinearAlgebra.mul!(C,A,B)
+    sync(C)
+end
+println("2) time of mul! in DistStat.jl:")
+sync(C)
+@btime begin
+    LinearAlgebra.mul!(C,A,B)
+    sync(C)
+end
+println("3) time of mul! in DistStat.jl:")
+sync(C)
+@btime begin
+    LinearAlgebra.mul!(C,A,B)
+    sync(C)
+end
+println(" ")
+println("1) time of mul_1d! in DistStat.jl:")
+sync(C)
+@btime begin
+    mul_1d!(C,A,B)
+    sync(C)
+end
+println("2) time of mul_1d! in DistStat.jl:")
+sync(C)
+@btime begin
+    mul_1d!(C,A,B)
+    sync(C)
+end
+println("3) time of mul_1d! in DistStat.jl:")
+sync(C)
 @btime begin
     mul_1d!(C,A,B)
     sync(C)
