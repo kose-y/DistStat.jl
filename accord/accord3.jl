@@ -35,7 +35,11 @@ function parse_commandline()
         "--max_inner"
             help = "number of maximum inner iterations"
             arg_type = Int
-            default = 20
+            default = 10
+        "--threads", "-c"
+            help = "number of threads used per process in BLAS"
+            arg_type = Int
+            default = 4
         "--mkl"
             help = "use mkl"
             action = :store_true
@@ -51,6 +55,7 @@ end
 
 include("../src/distdirectives.jl")
 include("../src/distarray.jl")
+include("../src/splinalg.jl")
 #include("../src/distlinalg.jl")
 # include("../src/reduce.jl")
 # include("../src/accumulate.jl")
@@ -120,7 +125,8 @@ end
 function compute_g!(v::ACCORDvariables{T}) where {T}
     # compute Y = X * Omega^T 
     # and return partial computation of g (smooth part of loss function)
-    LinearAlgebra.mul!(v.Y, v.X, v.OmegaT)
+    # LinearAlgebra.mul!(v.Y, v.X, v.OmegaT)
+    dspmm!(v.Y, v.X, v.OmegaT)
     return 0.5 * Folds.mapreduce(x -> x^2, +, v.Y) / v.n 
 end
 
@@ -132,7 +138,8 @@ end
 
 function compute_Omega!(v::ACCORDvariables{T}, tau::Real) where {T}
     # apply proximal update and update omega
-    o_tilde = v.OmegaT_old - tau * v.GT
+    #o_tilde = v.OmegaT_old - tau * v.GT
+    o_tilde = dgrad_update(v.OmegaT_old, v.GT, tau)
     c = tau * v.lambda
     diag_entries = Folds.map(x -> 0.5 * (x + sqrt(x^2 + 4*tau)), diag(o_tilde, v.diag_indx))
     Folds.map!(x -> x > c ? x - c : (x < -c ? x + c : zero(T)), o_tilde, o_tilde)
@@ -234,6 +241,8 @@ max_inner = opts["max_inner"]
 if opts["mkl"]
     using MKL
 end
+println("Available Threads: ", Threads.nthreads())
+BLAS.set_num_threads(opts["threads"])
 
 v = ACCORDvariables(X, lambda)
 u = ACCORDUpdate(max_outer, max_inner, tau_start, tau_min, tol)
