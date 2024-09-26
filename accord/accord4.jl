@@ -1,6 +1,7 @@
 import MPI
 import MPI: COMM_WORLD
 using Random, SparseArrays, LinearAlgebra, ArgParse, Printf, Dates, Format, Folds, NPZ
+using Base.Threads
 
 function parse_commandline()
     s = ArgParseSettings()
@@ -56,13 +57,7 @@ end
 include("../src/distdirectives.jl")
 include("../src/distarray.jl")
 include("../src/splinalg.jl")
-#include("../src/distlinalg.jl")
-# include("../src/reduce.jl")
-# include("../src/accumulate.jl")
-# include("../src/broadcast.jl")
 include("../src/arrayfunctions.jl")
-# include("../src/utils.jl")
-#include("../src/io.jl")
 
 MPI.Initialized() || MPI.Init()
 
@@ -138,28 +133,42 @@ end
 
 function compute_Omega!(v::ACCORDvariables{T}, tau::Real) where {T}
     # apply proximal update and update omega
-    #o_tilde = v.OmegaT_old - tau * v.GT
     o_tilde = dgrad_update(v.OmegaT_old, v.GT, tau)
     c = tau * v.lambda
     diag_entries = Folds.map(x -> 0.5 * (x + sqrt(x^2 + 4*tau)), diag(o_tilde, v.diag_indx))
-    Folds.map!(x -> x > c ? x - c : (x < -c ? x + c : zero(T)), o_tilde, o_tilde)
-    o_tilde[diagind(o_tilde, v.diag_indx)] = diag_entries
-    v.OmegaT = sparse(o_tilde)
-    return
+
+    # construct updated v.Omega
+    spbit = Folds.map(x -> x > c ? true : (x < -c ? true : false), o_tilde)
+    spbit[diagind(spbit, v.diag_indx)] .= true
+    p,k = size(o_tilde)
+    nnzs = sum(spbit; dims = 1)
+    nnz_count = sum(nnzs)
+
+    colptr = vec(cumsum(hcat(1, nnzs); dims = 2))
+    rowval = Vector{Int}(undef, nnz_count)
+    nzval = Vector{T}(undef, nnz_count)
+
+    Threads.@threads for j in axes(o_tilde, 2)
+        col_count = 0
+        for i in (1:p)[spbit[:,j]]
+            rowval[colptr[j] + col_count] = i
+            if j - i == v.diag_indx
+                nzval[colptr[j] + col_count] = diag_entries[j]
+            else    
+                nzval[colptr[j] + col_count] = o_tilde[i,j] > 0 ? o_tilde[i,j] - c : o_tilde[i,j] + c
+            end
+            col_count += 1
+        end
+    end
+    v.OmegaT = SparseMatrixCSC{T, Int}(p, k, colptr, rowval, nzval)
 end
 
 function compute_Q(v::ACCORDvariables{T}, tau::Real) where {T}
     # compute Q function for backtracking, also return maximum difference for stopping criterion
     D = v.OmegaT - v.OmegaT_old
-    # compute D_dot_G + D_F^2/(2*tau)
-    # D_dot_G = zero(T)
-    # for (i,j,k) in zip(findnz(D)...)
-    #     D_dot_G += k * v.GT[i,j]
-    # end
 
-    # partial_Q = D_dot_G + mapreduce(x -> x^2, +, D.nzval) / (2.0 * tau)
+    # compute D_dot_G + D_F^2/(2*tau)
     partial_Q = Folds.mapreduce(x -> x[3] * v.GT[x[1],x[2]], +, zip(findnz(D)...)) + Folds.mapreduce(x -> x^2, +, D.nzval) / (2.0 * tau)
-    # partial_maxdiff = maximum(abs.(D))
     partial_maxdiff = Folds.mapreduce(x -> abs(x), max, D.nzval)
 
     return partial_Q, partial_maxdiff
@@ -195,8 +204,6 @@ function update!(u::ACCORDUpdate, v::ACCORDvariables{T}, g_old::Real, i_outer::I
 end
 
 function accord!(u::ACCORDUpdate, v::ACCORDvariables{T}, start_time::DateTime) where {T}
-    # temp = [compute_g!(v)]
-    # MPI.Allreduce!(temp, MPI.SUM, MPI.COMM_WORLD)
     g_omega = compute_g!(v)
     omega_nnz = 0
     if Rank() == 0
@@ -204,8 +211,6 @@ function accord!(u::ACCORDUpdate, v::ACCORDvariables{T}, start_time::DateTime) w
     end
     for i_outer in 1:u.out_iter
         partial_maxdiff, g_omega, omega_nnz = update!(u, v, g_omega, i_outer, start_time)
-        # temp[1] = partial_maxdiff
-        # MPI.Allreduce!(temp, MPI.MAX, MPI.COMM_WORLD)
         v.OmegaT, v.OmegaT_old = v.OmegaT_old, v.OmegaT
         if partial_maxdiff <= u.tol
             break
@@ -219,15 +224,7 @@ if Rank() != 0
 end
 
 start_time = Dates.now()
-
 opts = parse_commandline()
-# if Rank() == 0
-#     println("world size: ", Size())
-#     # println(opts)
-#     for (arg, val) in opts
-#         println(" $arg => $val")
-#     end
-# end
 
 X = npzread(opts["input"])
 output_dir = opts["out"]
