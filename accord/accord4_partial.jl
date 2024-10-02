@@ -44,7 +44,7 @@ function parse_commandline()
         "--block_size", "-b"
             help = "size of distributed block, default uses maximum range"
             arg_type = Int
-            default = -1
+            default = 0
         "--offset", "-k"
             help = "index for the distributed block"
             arg_type = Int
@@ -110,6 +110,8 @@ mutable struct ACCORDvariables{T}
     X::Matrix{T}
     Y::Matrix{T}
     GT::Matrix{T}
+    o_tilde::Matrix{T}
+    threshold::Matrix{Bool}
     OmegaT::SparseMatrixCSC{T,Int}
     OmegaT_old::SparseMatrixCSC{T,Int}
     diag_indx::Int #for diagonal coordinate
@@ -123,7 +125,9 @@ mutable struct ACCORDvariables{T}
 
         Y = Matrix{T}(undef, n, size(OmegaT, 2))
         GT = Matrix{T}(undef, p, size(OmegaT, 2))
-        new{T}(n, p, lambda, X, Y, GT, OmegaT, OmegaT_old, diag_indx)
+        o_tilde = Matrix{T}(undef, p, size(OmegaT, 2))
+        threshold = Matrix{Bool}(undef, p, size(OmegaT, 2))
+        new{T}(n, p, lambda, X, Y, GT, o_tilde, threshold, OmegaT, OmegaT_old, diag_indx)
     end
     function ACCORDvariables(X::Matrix{T}, lambda::Real, start_ind::Integer, end_ind::Integer) where {T}
         # start with default identity
@@ -153,29 +157,29 @@ end
 
 function compute_Omega!(v::ACCORDvariables{T}, tau::Real) where {T}
     # apply proximal update and update omega
-    o_tilde = dgrad_update(v.OmegaT_old, v.GT, tau)
+    dgrad_update!(v.o_tilde, v.OmegaT_old, v.GT, tau)
     c = tau * v.lambda
-    diag_entries = Folds.map(x -> 0.5 * (x + sqrt(x^2 + 4*tau)), diag(o_tilde, v.diag_indx))
+    diag_entries = Folds.map(x -> 0.5 * (x + sqrt(x^2 + 4*tau)), diag(v.o_tilde, v.diag_indx))
 
     # construct updated v.Omega
-    spbit = Folds.map(x -> x > c ? true : (x < -c ? true : false), o_tilde)
-    spbit[diagind(spbit, v.diag_indx)] .= true
-    p,k = size(o_tilde)
-    nnzs = sum(spbit; dims = 1)
+    Folds.map!(x -> x > c ? true : (x < -c ? true : false), v.threshold, v.o_tilde)
+    v.threshold[diagind(v.threshold, v.diag_indx)] .= true
+    p,k = size(v.o_tilde)
+    nnzs = sum(v.threshold; dims = 1)
     nnz_count = sum(nnzs)
 
-    colptr = vec(cumsum(hcat(1, nnzs); dims = 2))
+    colptr = vec(accumulate(+, hcat(1, nnzs); dims = 2))
     rowval = Vector{Int}(undef, nnz_count)
     nzval = Vector{T}(undef, nnz_count)
 
-    Threads.@threads for j in axes(o_tilde, 2)
+    Threads.@threads for j in axes(v.o_tilde, 2)
         col_count = 0
-        for i in (1:p)[spbit[:,j]]
+        for i in (1:p)[v.threshold[:,j]]
             rowval[colptr[j] + col_count] = i
             if j - i == v.diag_indx
                 nzval[colptr[j] + col_count] = diag_entries[j]
             else    
-                nzval[colptr[j] + col_count] = o_tilde[i,j] > 0 ? o_tilde[i,j] - c : o_tilde[i,j] + c
+                nzval[colptr[j] + col_count] = v.o_tilde[i,j] > 0 ? v.o_tilde[i,j] - c : v.o_tilde[i,j] + c
             end
             col_count += 1
         end
@@ -266,17 +270,17 @@ BLAS.set_num_threads(opts["threads"])
 start_ind = block_size * offset + 1
 end_ind = block_size * (offset + 1)
 
-if Rank() == 0
-    @printf("Index starting from [%d] to [%d]\n", start_ind, end_ind)
-end
-
 @assert start_ind + Size() - 1 <= size(X,2) # at least one dimension per each array
-if start_ind <= 0
+if block_size <= 0
     start_ind = 1
     end_ind = size(X,2)
 end
 if end_ind > size(X,2)
     end_ind = size(X,2)
+end
+
+if Rank() == 0
+    @printf("Index starting from [%d] to [%d]\n", start_ind, end_ind)
 end
 
 v = ACCORDvariables(X, lambda, start_ind, end_ind)
