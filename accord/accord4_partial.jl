@@ -122,6 +122,7 @@ mutable struct ACCORDvariables{T}
 
         @assert size(OmegaT, 1) == p
         OmegaT_old = deepcopy(OmegaT)
+        println(size(OmegaT))
 
         Y = Matrix{T}(undef, n, size(OmegaT, 2))
         GT = Matrix{T}(undef, p, size(OmegaT, 2))
@@ -291,26 +292,12 @@ if Rank() == 0
 end
 omega_nnz = accord!(u, v, start_time)
 if Rank() == 0
-    @printf("Saving matrix market files. [%10.4lf]\n", Dates.value(now() - start_time) * 0.001)
+    @printf("Saving matrix files. [%10.4lf]\n", Dates.value(now() - start_time) * 0.001)
 end
-#Convert to Omega and save in matrix market form
-format_d = generate_formatter("%10d")
-format_g = generate_formatter("%30.16g")
-global_cord = - v.diag_indx
-open(join([output_dir, "-", cfmt("%04d", offset), "-", cfmt("%04d", Rank())]), "w") do file
-    if Rank() == 0
-        write(file, "%%MatrixMarket matrix coordinate real general\n")
-        write(file, join([v.p, " ", v.p, " ", Int(omega_nnz), "\n"]))
-    end
-    for i in 1:(v.OmegaT_old.n)
-        k = v.OmegaT_old.colptr[i]
-        while k < v.OmegaT_old.colptr[i + 1]
-            j = v.OmegaT_old.rowval[k]
-            write(file, join([format_d(i + global_cord), " ", format_d(j), " ", format_g(v.OmegaT_old.nzval[k]), "\n"]))
-            k += 1
-        end
-    end
-end
+omegaT = spzeros(Float64, v.p, v.p)
+omegaT[:,block_distribute(start_ind, end_ind, Size())[Rank() + 1]] += v.OmegaT_old
+npzwrite(join([output_dir, "-", cfmt("%04d", offset), "-", cfmt("%04d", Rank()), ".npz"]), Dict("p"=> v.p, "colptr" => omegaT.colptr, "rowval"=>omegaT.rowval, "nzval"=>omegaT.nzval))
+
 if Rank() == 0
     @printf("Save complete. [%10.4lf]\n", Dates.value(now() - start_time) * 0.001)
 end
