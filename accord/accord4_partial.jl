@@ -13,6 +13,9 @@ function parse_commandline()
         "--out", "-o"
             help = "name of output file"
             default = nothing
+        "--re"
+            help = "option for resuming from a saved npz file"
+            default = nothing
         "--l1", "-l"
             help = "lambda penalty"
             arg_type = Float64
@@ -46,7 +49,7 @@ function parse_commandline()
             arg_type = Int
             default = 0
         "--offset", "-k"
-            help = "index for the distributed block"
+            help = "index of the distributed block"
             arg_type = Int
             default = 0
         "--mkl"
@@ -284,7 +287,15 @@ if Rank() == 0
     @printf("Index starting from [%d] to [%d]\n", start_ind, end_ind)
 end
 
-v = ACCORDvariables(X, lambda, start_ind, end_ind)
+v = nothing
+if isnothing(opts["re"])
+    v = ACCORDvariables(X, lambda, start_ind, end_ind)
+else
+    oz = npzread(join([opts["re"], "-", cfmt("%04d", offset), "-", cfmt("%04d", Rank()), ".npz"]))
+    omegaT = SparseMatrixCSC{Float64, Int64}(oz["p"], oz["p"], oz["colptr"], oz["rowval"], oz["nzval"],)
+    parts = block_distribute(start_ind, end_ind, Size())
+    v = ACCORDvariables(X, lambda, omegaT[:, parts[Rank() + 1]], parts[Rank() + 1][1])
+end
 u = ACCORDUpdate(max_outer, max_inner, tau_start, tau_min, tol)
 
 if Rank() == 0
